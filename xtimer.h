@@ -1,3 +1,10 @@
+/*
+ * Changed from the CRAFT 3.5 Standard Version (craftcc35.tar.Z),
+ * as clause 3 of its license requires (see LICENSE):
+ *   2026       dleecurt/craft: compiler, warning and bug fixes
+ * Exact changes: git log -- xtimer.h
+ */
+
 #include "stdio.h"
 #include "sys/types.h"
 #include <sys/time.h>

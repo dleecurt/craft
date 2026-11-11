@@ -1,3 +1,10 @@
+/*
+ * Changed from the CRAFT 3.5 Standard Version (craftcc35.tar.Z),
+ * as clause 3 of its license requires (see LICENSE):
+ *   2018-2019  Quipyowert2/craft: fixes for modern compilers
+ * Exact changes: git log -- xmath.h
+ */
+
 /*======================================================================*/
 /*= CHANGES AND UPDATES                                                =*/
 /*======================================================================*/

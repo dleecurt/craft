@@ -162,6 +162,7 @@ bool multi_dial::pressed (int bno)
 bool multi_dial::press (int bno, bool mode)
   {values [bno] = mode;
    eval ();
+   return true;
   }
 
 bool multi_dial::get_cmd (char cmds [], int &p, char cmd [])

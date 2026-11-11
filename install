@@ -13,7 +13,7 @@ XLIB=/usr/X11R6/lib
 #
 #--------------------------------------------------------------------
 
-CFLAGS="-O2 -fexpensive-optimizations -finline-functions"
+CFLAGS="${CFLAGS:--O2 -fexpensive-optimizations -finline-functions}"
 HCC=hcc/hcc
 CMP="$HCC -compiler $GCC $CFLAGS -c"
 

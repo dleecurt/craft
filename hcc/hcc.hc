@@ -216,7 +216,7 @@ void pass_1_error (int line_no, char msg [])
    exit   (1);
   }
 
-bool pass_1 (char src_name [])
+void pass_1 (char src_name [])
   {bool inside_comment;
    bool inside_prc;
    int  symbol_no;
@@ -655,7 +655,7 @@ void sub_ref (int ref_n)
  
   }
 
-bool pass_2 (char obj_name [])
+void pass_2 (char obj_name [])
   {int  line_no;
    int  char_no;
    bool within_string;
@@ -796,7 +796,7 @@ void pass_3 (char src_name [])
    open_err_file;
    if (err_file != NULL)
       scan_errors;
-   fclose (err_file); 
+   if (err_file != NULL) fclose (err_file);
 
 .  open_err_file
      {err_file = fopen (complete (src_name, ".err"), "r");
@@ -829,7 +829,7 @@ void pass_3 (char src_name [])
       int  p0;
       int  c = 0;
 
-      num_errors++;
+      if (strstr (buffer, "error:") != NULL) num_errors++;
       get_p;
       if   (p < strlen (buffer))
            handle_second_colon

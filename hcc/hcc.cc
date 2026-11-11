@@ -193,7 +193,7 @@ void pass_1_error (int line_no, const char msg [])
    exit   (1);
   }
 
-bool pass_1 (char src_name [])
+void pass_1 (char src_name [])
   {bool inside_comment;
    bool inside_prc;
    int  symbol_no;
@@ -1123,7 +1123,7 @@ void sub_ref (int ref_n)
  
   }
 
-bool pass_2 (char obj_name [])
+void pass_2 (char obj_name [])
   {int  line_no;
    int  char_no;
    bool within_string;
@@ -1248,7 +1248,7 @@ void pass_3 (char src_name [])
       int  p0;
       int  c = 0;
 
-      num_errors++;
+      if (strstr (buffer, "error:") != NULL) num_errors++;
        /* get_p */      {while (c < strlen (buffer) && buffer [c] != ':') 
         {c++;
         };
@@ -1293,7 +1293,7 @@ void pass_3 (char src_name [])
       exit    (1);
      };
      };
-   fclose (err_file); 
+   if (err_file != NULL) fclose (err_file);
 
 
 

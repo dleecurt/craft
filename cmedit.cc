@@ -90,7 +90,7 @@ char host[max_players][128];
 char name[max_players][128];
 double speed[max_players];
 
-main(int num_params, char *shell_params[])
+int main(int num_params, char *shell_params[])
 {
    char name[256];
 

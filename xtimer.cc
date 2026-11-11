@@ -5,21 +5,16 @@
 #include "sys/time.h"
 #include "signal.h"
 
-extern "C"
-{
-   int ftime(struct timeb *);
-}
-
 /*----------------------------------------------------------------------*/
 /* CLASS xtimer (funktions)                                              */
 /*----------------------------------------------------------------------*/
 
 long x_sys_time()
 {
-   struct timeb tb;
+   struct timeval tv;
 
-   ftime(&tb);
-   return (tb.time * 1000 + (unsigned long)tb.millitm);
+   gettimeofday(&tv, NULL);
+   return (tv.tv_sec * 1000 + tv.tv_usec / 1000);
 }
 
 void xtimer::start()
@@ -49,7 +44,7 @@ double xtimer::read()
    return dt;
 }
 
-void sig(int signo)
+void sig(int /* signo */)
 {
    signal(SIGALRM, sig);
 }

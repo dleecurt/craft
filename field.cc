@@ -34,8 +34,7 @@ void field::init_building(int color)
                if (objects->color[u] == color
                    && (objects->type[u] == object_worker || is_building(objects->type[u])))
                { // handle_o
-                  int n;
-                  int p;
+                  int p = 0;
 
                   /*
       get_n;
@@ -272,7 +271,7 @@ void field::init_man(int color)
       }
 }
 
-bool field::expand(int max_time, int color)
+bool field::expand(int /* max_time */, int color)
 {
    bool any_change = false;
 
@@ -798,7 +797,7 @@ void field::push_neighbors(int x, int y)
    for (int x1 = xmin; x1 <= xmax; x1++)
       for (int y1 = ymin; y1 <= ymax; y1++)
          if (!in_cand[x1][y1]
-             && (f[x1][y1] < f[x][y] || (f[x1][y1] >= blocked) && is_water[x1][y1]))
+             && (f[x1][y1] < f[x][y] || ((f[x1][y1] >= blocked) && is_water[x1][y1])))
             push_cand(x1, y1);
 }
 

@@ -1,4 +1,7 @@
+#include <limits.h>
+#include <stdlib.h>
 #include "file_selector.h"
+#include "errorhandling.h"
 #include "xstring.h"
 #include "pattern_match.h"
 
@@ -110,10 +113,10 @@ void file_selector::get_file_list()
       char cmd[512];
 
       if (strlen(file_name) == 0)
-         sprintf(cmd, "csh -f -c \"ls -F > filesel.temp\"");
+         sprintf(cmd, "ls -F > filesel.temp");
       else
-         sprintf(cmd, "csh -f -c \"ls -F %s > filesel.temp\"", file_name);
-      system(cmd);
+         sprintf(cmd, "ls -F %s > filesel.temp", file_name);
+      run_command(cmd);
    }
    { // read_file_list
       FILE *l_file;
@@ -178,23 +181,26 @@ bool file_selector::eval(char full_name[])
          if (strcmp(file_list[case_no], "..") == 0)
             strcpy(file_name, "..");
          else
-            strcat(file_name, file_list[case_no]);
+            memmove(file_name + strlen(file_name), file_list[case_no],
+                    strlen(file_list[case_no]) + 1);
          get_name->refresh();
          { // handle_new_file_name
             if (f_is_dir(file_name))
             { // handle_change_dir
                if (strcmp(file_name, "..") == 0)
                { // cd_to_previous
-                  FILE *f;
-                  char cmd[1024];
+                  char up[PATH_MAX];
+                  char parent[PATH_MAX];
 
-                  sprintf(cmd, "csh -f -c \"cd %s; pushd .. > %s/filesel.temp\"", old_dir,
-                          getenv("PWD"));
-                  system(cmd);
-                  f = fopen("filesel.temp", "r");
-                  fscanf(f, "%255s", file_name);
-                  strcat(file_name, "/");
-                  fclose(f);
+                  snprintf(up, sizeof(up), "%s/..", old_dir);
+                  if (realpath(up, parent) != NULL && strlen(parent) < 250)
+                  {
+                     size_t len = strlen(parent);
+
+                     memcpy(file_name, parent, len);
+                     file_name[len] = '/';
+                     file_name[len + 1] = 0;
+                  }
                }
                get_name->refresh();
             }
@@ -237,16 +243,18 @@ bool file_selector::eval(char full_name[])
             { // handle_change_dir
                if (strcmp(file_name, "..") == 0)
                { // cd_to_previous
-                  FILE *f;
-                  char cmd[1024];
+                  char up[PATH_MAX];
+                  char parent[PATH_MAX];
 
-                  sprintf(cmd, "csh -f -c \"cd %s; pushd .. > %s/filesel.temp\"", old_dir,
-                          getenv("PWD"));
-                  system(cmd);
-                  f = fopen("filesel.temp", "r");
-                  fscanf(f, "%255s", file_name);
-                  strcat(file_name, "/");
-                  fclose(f);
+                  snprintf(up, sizeof(up), "%s/..", old_dir);
+                  if (realpath(up, parent) != NULL && strlen(parent) < 250)
+                  {
+                     size_t len = strlen(parent);
+
+                     memcpy(file_name, parent, len);
+                     file_name[len] = '/';
+                     file_name[len + 1] = 0;
+                  }
                }
                get_name->refresh();
             }

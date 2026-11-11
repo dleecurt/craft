@@ -5,6 +5,7 @@
 /*======================================================================*/
 
 #include "string.h"
+#include "errorhandling.h"
 #include "ppm_handler.h"
 #include "xfile.h"
 
@@ -16,7 +17,7 @@ bool ppm_size(char name[], int &dx, int &dy, int &color)
       char type[128];
 
       f = fopen(name, "r");
-      fscanf(f, "%127s %d %d %d", type, &dx, &dy, &color);
+      read_check(fscanf(f, "%127s %d %d %d", type, &dx, &dy, &color), 4, "PPM image");
       fclose(f);
       return (strcmp(type, "P6") == 0);
    }

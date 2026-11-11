@@ -63,7 +63,7 @@ void lower(char s[])
    char ss[1024];
    int i;
 
-   for (i = 0; i < strlen(s); i++)
+   for (i = 0; i < (int)strlen(s); i++)
       if (isupper(s[i]))
          ss[i] = tolower(s[i]);
       else
@@ -72,7 +72,7 @@ void lower(char s[])
    strcpy(s, ss);
 }
 
-void changeall(char s[], int max_length_of_s, char tmplate[], char replacement[])
+void changeall(char s[], int max_length_of_s, const char tmplate[], const char replacement[])
 
 {
    char *pos;
@@ -90,9 +90,9 @@ void changeall(char s[], int max_length_of_s, char tmplate[], char replacement[]
          *pp = 0;
       }
       { // insert_replacement
-         if (strlen(s) + strlen(replacement) < max_length_of_s)
+         if ((int)(strlen(s) + strlen(replacement)) < max_length_of_s)
          { // perform_insert
-            char buffer[max_length_of_s];
+            char *buffer = new char[max_length_of_s];
             char *pp = s;
             int i = 0;
 
@@ -105,6 +105,7 @@ void changeall(char s[], int max_length_of_s, char tmplate[], char replacement[]
                buffer[i++] = *(pp++);
             buffer[i] = 0;
             strcpy(s, buffer);
+            delete[] buffer;
          }
       }
    }
@@ -173,13 +174,13 @@ int submatch(char s[], char p[], int &pos)
 
 void delchar(char s[], int pos)
 {
-   for (int p = pos; p < strlen(s); p++)
+   for (int p = pos; p < (int)strlen(s); p++)
       s[p] = s[p + 1];
 }
 
 void inschar(char s[], int pos, char n)
 {
-   if (pos < strlen(s))
+   if (pos < (int)strlen(s))
    { // handle_insert
       for (int i = strlen(s); i >= pos; i--)
          s[i + 1] = s[i];
@@ -196,7 +197,7 @@ void inschar(char s[], int pos, char n)
 
 int strpos(char s[], char p)
 {
-   for (int i = 0; i < strlen(s); i++)
+   for (int i = 0; i < (int)strlen(s); i++)
       if (s[i] == p)
          return i;
    return -1;

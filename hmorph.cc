@@ -1,8 +1,8 @@
 #include "morph.h"
 
-main(int num_params, char *shell_params[])
+int main(int num_params, char *shell_params[])
 {
-   if ((num_params < 5))
+   if (num_params < 6)
    { // usage
       printf("morph <orig> <dest> <background><regions><num_steps>\n");
       exit(0);

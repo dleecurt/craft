@@ -32,10 +32,10 @@ AC_ARG_ENABLE([tools],
   [], [enable_tools=yes])
 AM_CONDITIONAL([BUILD_TOOLS], [test "x$enable_tools" != xno])
 
-dnl Extra warnings for development
+dnl Compiler warnings (the code builds warning-free with gcc and clang)
 AC_ARG_ENABLE([warnings],
-  [AS_HELP_STRING([--enable-warnings], [compile with -Wall -Wextra])],
-  [], [enable_warnings=no])
+  [AS_HELP_STRING([--disable-warnings], [do not compile with -Wall -Wextra])],
+  [], [enable_warnings=yes])
 AS_IF([test "x$enable_warnings" = xyes],
       [WARN_CXXFLAGS="-Wall -Wextra"], [WARN_CXXFLAGS=""])
 AC_SUBST([WARN_CXXFLAGS])

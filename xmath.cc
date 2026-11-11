@@ -204,6 +204,7 @@ int nible(char c)
       return 14;
    if (c == 'f' || c == 'F')
       return 15;
+   return 0;
 }
 
 int hextoint(char hex[])
@@ -248,6 +249,7 @@ char hnible(int i)
    case 15:
       return 'f';
    }
+   return '0';
 }
 
 char *inttohex(int i)

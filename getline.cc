@@ -72,14 +72,13 @@ craft_getline::~craft_getline()
 
 void craft_getline::refresh()
 {
-   int cx;
+   int cx = 0;
    int dl;
-   int d;
 
    { // calc_dl
       int s_dx = 0;
 
-      for (dl = pos_0; dl <= strlen(line) && (s_dx < dx - 8); dl++)
+      for (dl = pos_0; dl <= (int)strlen(line) && (s_dx < dx - 8); dl++)
       { // get_s_dx
          int d;
 
@@ -126,10 +125,9 @@ bool craft_getline::on()
    int xm;
    int ym;
    int button;
-   int is_click;
 
    w->tick();
-   is_click = w->is_mouse(xm, ym, button);
+   w->is_mouse(xm, ym, button);
    return (x <= xm && xm <= x + dx && y <= ym && ym <= y + dy);
 }
 
@@ -182,7 +180,7 @@ bool craft_getline::eval()
          if (on())
          {
             { // get_mouse_pos
-               for (int i = pos_0; i <= strlen(line); i++)
+               for (int i = pos_0; i <= (int)strlen(line); i++)
                { // check_mouse_pos
                   int sdx;
                   int sdy;

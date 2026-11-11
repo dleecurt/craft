@@ -77,10 +77,10 @@ char host[max_players][128];
 char name[max_players][128];
 double speed[max_players];
 
-main(int num_params, char *shell_params[])
+int main(int num_params, char *shell_params[])
 {
    { // perhaps_usage
-      if (num_params < 2)
+      if (num_params < 3)
       { // usage
          printf("ppm2cmap <ppm name> <cmap name>\n");
          exit(1);

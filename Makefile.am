@@ -57,7 +57,6 @@ libcraft_a_SOURCES = \
 	xfile.cc xfile.h \
 	xmath.cc xmath.h \
 	xstring.cc xstring.h \
-	xsystem.cc xsystem.h \
 	xtimer.cc xtimer.h \
 	bool.h craft.h craft_def.h
 

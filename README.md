@@ -38,7 +38,7 @@ Useful `configure` options:
 |---|---|
 | `--prefix=DIR` | install under `DIR` (default `/usr/local`) |
 | `--disable-tools` | build only the game, not the `craft-*` art tools |
-| `--enable-warnings` | compile with `-Wall -Wextra` |
+| `--disable-warnings` | drop the default `-Wall -Wextra` (the code builds warning-free with gcc and clang) |
 
 ## Running
 

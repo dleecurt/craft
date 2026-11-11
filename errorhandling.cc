@@ -6,6 +6,7 @@
 /*=                                                                    =*/
 /*======================================================================*/
 
+#include <unistd.h>
 #include "errorhandling.h"
 #include "table.h"
 #include "paramreader.h"
@@ -33,7 +34,26 @@ void errorstop(int error_no, const char c_class[], const char msg[], const char 
                const char param1[], const char param2[])
 
 {
-   printf("ERROR (%d) : %s : %s : %s : %s : %s\n", error_no, c_class, msg, info, param1, param2);
+   fflush(stdout);
+   fprintf(stderr, "ERROR (%d) : %s : %s : %s : %s : %s\n", error_no, c_class, msg, info, param1,
+           param2);
    close_table_handler(false);
    abort();
+}
+
+void read_check(int got, int expected, const char what[])
+{
+   if (got != expected)
+      errorstop(3, "FILE", "unexpected or missing data", what);
+}
+
+void run_command(const char cmd[])
+{
+   if (system(cmd) != 0)
+      fprintf(stderr, "craft: command failed: %s\n", cmd);
+}
+
+void remove_file(const char name[])
+{
+   unlink(name);
 }

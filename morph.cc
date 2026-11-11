@@ -1,4 +1,5 @@
 #include "morph.h"
+#include "errorhandling.h"
 #include "win.h"
 #include "xstring.h"
 
@@ -166,18 +167,20 @@ void morph(char orig[], char dest[], char background[], char regions[], int numb
             strcat(r_name, ".ppm");
             pc->save(r_name);
             { // convert_to_pcx
-               char cmd[256];
+               char cmd[512];
                char r_name[128];
 
                sprintf(r_name, "%s_%04d", regions, s);
                changeall(r_name, 128, ".morph", "");
 
-               sprintf(cmd, "ppmquant 256 %s.ppm > %s.tmp", r_name, r_name);
-               system(cmd);
-               sprintf(cmd, "ppmtopcx %s.tmp > %s.pcx", r_name, r_name);
-               system(cmd);
-               sprintf(cmd, "rm %s.ppm %s.tmp", r_name, r_name);
-               system(cmd);
+               snprintf(cmd, sizeof(cmd), "ppmquant 256 %s.ppm > %s.tmp", r_name, r_name);
+               run_command(cmd);
+               snprintf(cmd, sizeof(cmd), "ppmtopcx %s.tmp > %s.pcx", r_name, r_name);
+               run_command(cmd);
+               sprintf(cmd, "%s.ppm", r_name);
+               remove_file(cmd);
+               sprintf(cmd, "%s.tmp", r_name);
+               remove_file(cmd);
             }
          }
       }

@@ -245,7 +245,8 @@ void init_speed(double factor)
    speed_ship_zombi = i_max(1, (int)((double)xspeed_ship_zombi * factor));
 }
 
-void init_craft(char host[max_players][128], char name[max_players][128], double speed[max_players])
+void init_craft(char host[max_players][128], char name[max_players][128],
+                double /* speed */[max_players])
 
 {
    install_abnormal_termination_handler();
@@ -907,7 +908,7 @@ void set_initial_objects()
    };
 }
 
-int main(int num_params, char *shell_params[])
+int main()
 {
    double act_speed;
 
@@ -971,17 +972,17 @@ int main(int num_params, char *shell_params[])
                                && (players[i]->num_mans <= 0 || suspend == i
                                    || players[i]->master_dead))
                            { // handle_game_over
-                              char msg[128];
+                              char msg[640];
                               win *w[max_players];
-                              button *b[max_players];
+                              button *b[max_players] = {};
                               bool m_active[max_players];
 
                               if (players[i]->master_dead)
-                                 sprintf(msg, "%s haes been killed", name[i]);
+                                 snprintf(msg, sizeof(msg), "%s haes been killed", name[i]);
                               else if (players[i]->num_mans <= 0)
-                                 sprintf(msg, "%s lost all his man", name[i]);
+                                 snprintf(msg, sizeof(msg), "%s lost all his man", name[i]);
                               else if (suspend == i)
-                                 sprintf(msg, "%s gives up", name[i]);
+                                 snprintf(msg, sizeof(msg), "%s gives up", name[i]);
                               { // tell_to_players
                                  for (int j = 0; j < max_players; j++)
                                  {
@@ -1144,17 +1145,17 @@ int main(int num_params, char *shell_params[])
                if (active[i]
                    && (players[i]->num_mans <= 0 || suspend == i || players[i]->master_dead))
                { // handle_game_over
-                  char msg[128];
+                  char msg[640];
                   win *w[max_players];
-                  button *b[max_players];
+                  button *b[max_players] = {};
                   bool m_active[max_players];
 
                   if (players[i]->master_dead)
-                     sprintf(msg, "%s haes been killed", name[i]);
+                     snprintf(msg, sizeof(msg), "%s haes been killed", name[i]);
                   else if (players[i]->num_mans <= 0)
-                     sprintf(msg, "%s lost all his man", name[i]);
+                     snprintf(msg, sizeof(msg), "%s lost all his man", name[i]);
                   else if (suspend == i)
-                     sprintf(msg, "%s gives up", name[i]);
+                     snprintf(msg, sizeof(msg), "%s gives up", name[i]);
                   { // tell_to_players
                      for (int j = 0; j < max_players; j++)
                      {

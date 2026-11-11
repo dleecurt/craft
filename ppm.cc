@@ -155,7 +155,9 @@ ppm::ppm(char name[], bool with_cache)
          for (int y = 0; y < dy; y++)
             for (int x = 0; x < dx; x++)
             { // read_pixel
-               fscanf(data, "%d %d %d", &r_data[ind(x, y)], &g_data[ind(x, y)], &b_data[ind(x, y)]);
+               read_check(fscanf(data, "%d %d %d", &r_data[ind(x, y)], &g_data[ind(x, y)],
+                                 &b_data[ind(x, y)]),
+                          3, "PPM image");
             }
       }
    }
@@ -329,12 +331,12 @@ int ppm::ind(int x, int y)
 
 bool ppm::equal(ppm *p, int x, int y)
 {
-   int ra;
-   int ga;
-   int ba;
-   int rb;
-   int gb;
-   int bb;
+   int ra = 0;
+   int ga = 0;
+   int ba = 0;
+   int rb = 0;
+   int gb = 0;
+   int bb = 0;
 
    rgb(x, y, ra, ga, ba);
    p->rgb(x, y, rb, gb, bb);

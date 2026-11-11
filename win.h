@@ -268,7 +268,7 @@ class win
      void   set_cursor       (char name []);
      void   set_cursor       (int cursor);
      void   set_color        (int r, int g, int b);
-     void   win_rgb          (int color, int &r, int &g, int b);
+     void   win_rgb          (int color, int &r, int &g, int &b);
      int    win_color        (int r, int g, int b);
      void   set_color        (int color);
      void   set_background   (int color);

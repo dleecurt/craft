@@ -53,7 +53,7 @@ menu::menu(const char w_name[], int w_x, int w_y, const char w_cmds[], int w_mod
       c_border_dark = win_default_c("menu_border_dark");
       c_foreground = win_default_c("menu_foreground");
    }
-   if ((w_cmds[0] != '$' && w_cmds[0] != '/'))
+   if (w_cmds[0] != '$' && w_cmds[0] != '/')
    {    // calc_text_dim
       { // scan_buttons
          int p = 0;
@@ -101,7 +101,8 @@ menu::menu(const char w_name[], int w_x, int w_y, const char w_cmds[], int w_mod
          if (w_cmds[0] == '$')
             strcpy(button_dir, "");
          else
-            snprintf(button_dir, sizeof(button_dir), "%s/", craft_data(win_default_s("button_dir")));
+            snprintf(button_dir, sizeof(button_dir), "%s/",
+                     craft_data(win_default_s("button_dir")));
       }
       { // scan_buttons
          int p = 0;
@@ -137,9 +138,9 @@ menu::menu(const char w_name[], int w_x, int w_y, const char w_cmds[], int w_mod
          }
       }
       { // get_icon_size
-         char name[128];
+         char name[2048];
 
-         sprintf(name, "%s%s", button_dir, cmds[0]);
+         snprintf(name, sizeof(name), "%s%s", button_dir, cmds[0]);
          bitmap_size(name, icon_dx, icon_dy);
       }
       icon_mode = true;
@@ -241,9 +242,9 @@ void menu::write(int no, char string[], bool pressed)
    }
    if (icon_mode)
    { // write_icon
-      char m_name[128];
+      char m_name[2048];
 
-      sprintf(m_name, "%s%s", button_dir, string);
+      snprintf(m_name, sizeof(m_name), "%s%s", button_dir, string);
 
       w->set_background(c_background);
       w->set_color(c_foreground);
@@ -328,7 +329,7 @@ void menu::release(int no)
 
 bool menu::get_cmd(const char cmds[], int &p, char cmd[])
 {
-   if ((p >= strlen(cmds)))
+   if ((p >= (int)strlen(cmds)))
       return false;
    else
    { // read_cmd
@@ -337,7 +338,7 @@ bool menu::get_cmd(const char cmds[], int &p, char cmd[])
 
       if (cmds[p] == '$' || cmds[p] == '&')
          p++;
-      while (cmds[p] != ':' && !(p >= strlen(cmds)))
+      while (cmds[p] != ':' && !(p >= (int)strlen(cmds)))
       {
          { // handle_skip_mode
             if (cmds[p] == ';')

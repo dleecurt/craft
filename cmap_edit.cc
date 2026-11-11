@@ -1,4 +1,5 @@
 #include "dial.h"
+#include "errorhandling.h"
 #include "cmap.h"
 #include "cmap_selector.h"
 #include "file_selector.h"
@@ -246,12 +247,12 @@ void cmap_edit::load()
       { // read_size
          int d;
 
-         fscanf(f, "%d %d %d %d", &d, &dx, &dy, &t_color);
+         read_check(fscanf(f, "%d %d %d %d", &d, &dx, &dy, &t_color), 4, "picture file (.cmap)");
       }
       { // read_data
          for (int y = 0; y < dy; y++)
             for (int x = 0; x < dx; x++)
-               fscanf(f, "%d", &map[x][y]);
+               read_check(fscanf(f, "%d", &map[x][y]), 1, "picture file (.cmap)");
       }
       fclose(f);
    }
@@ -309,10 +310,8 @@ void cmap_edit::save_as(char new_name[], int x0, int y0, int sdx, int sdy)
       fclose(f);
    }
    { // clear_old_mask
-      char cmd[128];
 
-      sprintf(cmd, "rm %s", complete(name, ".xbm"));
-      system(cmd);
+      remove_file(complete(name, ".xbm"));
    }
    { // perhaps_save_mask
       bool is_mask;
@@ -402,7 +401,8 @@ void cmap_edit::edit(bool &was_quit)
             }
             { // get_sdx_sdy
                printf("sdx sdy no :");
-               scanf("%d %d %d", &sdx, &sdy, &no);
+               if (scanf("%d %d %d", &sdx, &sdy, &no) != 3)
+                  strcpy(new_name, "");
             }
             if ((strlen(new_name) > 0
                  && (!f_exists(complete(new_name, ".cmap")) || yes("overwrite"))))
@@ -538,7 +538,16 @@ void cmap_edit::edit(bool &was_quit)
             bresize->press(true);
             { // perform_init
                printf("Enter size (dx, dy) :\n");
-               scanf("%d %d", &dx, &dy);
+               {
+                  int new_dx;
+                  int new_dy;
+
+                  if (scanf("%d %d", &new_dx, &new_dy) == 2)
+                  {
+                     dx = new_dx;
+                     dy = new_dy;
+                  }
+               }
                if (dx > 100 || dy > 100)
                {
                   pixel_dx = 1;
@@ -1136,7 +1145,7 @@ void cmap_edit::edit(bool &was_quit)
 
 void cmap_edit::flip_ud()
 {
-   int b[dx][dy];
+   static int b[max_map_dx][max_map_dy];
 
    { // exec_flip
       for (int x = 0; x < dx; x++)
@@ -1152,7 +1161,7 @@ void cmap_edit::flip_ud()
 
 void cmap_edit::flip_lr()
 {
-   int b[dx][dy];
+   static int b[max_map_dx][max_map_dy];
 
    { // exec_flip
       for (int x = 0; x < dx; x++)
@@ -1297,10 +1306,6 @@ void cmap_edit::colorize(int ddx, int ddy, int c, int n)
             }
          }
          { // light_pixel
-            int r;
-            int g;
-            int b;
-            int cnt = 1;
 
             if (map[x][y] < 52)
                map[x][y] = i_bound(0, map[x][y] - i_sign(c), 63);
@@ -1381,10 +1386,6 @@ void cmap_edit::colorize(int ddx, int ddy, int c, int n)
             }
          }
          { // light_pixel
-            int r;
-            int g;
-            int b;
-            int cnt = 1;
 
             if (map[x][y] < 52)
                map[x][y] = i_bound(0, map[x][y] - i_sign(c), 63);
@@ -1420,10 +1421,6 @@ void cmap_edit::colorize(int ddx, int ddy)
       for (int x = 0; x < dx; x++)
          for (int y = ymin; y < ymax; y++)
          { // light_pixel
-            int r;
-            int g;
-            int b;
-            int cnt = 1;
 
             if (map[x][y] < 52)
                map[x][y] = i_bound(0, map[x][y] - i_sign(ddx + ddy), 61);
@@ -1451,10 +1448,6 @@ void cmap_edit::colorize(int ddx, int ddy)
       for (int x = xmin; x < xmax; x++)
          for (int y = 0; y < dy; y++)
          { // light_pixel
-            int r;
-            int g;
-            int b;
-            int cnt = 1;
 
             if (map[x][y] < 52)
                map[x][y] = i_bound(0, map[x][y] - i_sign(ddx + ddy), 61);
@@ -1544,20 +1537,18 @@ void cmap_edit::overlay(char name[])
       FILE *f;
 
       { // open_image_file
-         char i_file_name[256];
 
          f_open(f, complete(name, ".cmap"), "r");
       }
       { // read_dx_dy
-         int d;
 
-         fscanf(f, "%d %d %d %d", &version, &dxx, &dyy, &bg);
+         read_check(fscanf(f, "%d %d %d %d", &version, &dxx, &dyy, &bg), 4, "picture file (.cmap)");
       }
       { // read_pixels
          for (int y = 0; y < dyy; y++)
             for (int x = 0; x < dxx; x++)
             { // read_pixel
-               fscanf(f, "%d", &o_map[x][y]);
+               read_check(fscanf(f, "%d", &o_map[x][y]), 1, "picture file (.cmap)");
             }
       }
       fclose(f);
@@ -1584,20 +1575,18 @@ void cmap_edit::paste(char name[], int x0, int y0)
       FILE *f;
 
       { // open_image_file
-         char i_file_name[256];
 
          f_open(f, complete(name, ".cmap"), "r");
       }
       { // read_dxx_dyy
-         int d;
 
-         fscanf(f, "%d %d %d %d", &version, &dxx, &dyy, &bg);
+         read_check(fscanf(f, "%d %d %d %d", &version, &dxx, &dyy, &bg), 4, "picture file (.cmap)");
       }
       { // read_pixels
          for (int y = 0; y < dyy; y++)
             for (int x = 0; x < dxx; x++)
             { // read_pixel
-               fscanf(f, "%d", &o_map[x][y]);
+               read_check(fscanf(f, "%d", &o_map[x][y]), 1, "picture file (.cmap)");
             }
       }
       fclose(f);
@@ -1651,9 +1640,9 @@ void cmap_edit::split(int sdx, int sdy, char name[], int no)
    for (int y = 0; y < dy - 1; y += sdy)
       for (int x = 0; x < dx - 1; x += sdx)
       { // get_subpic
-         char f_name[128];
+         char f_name[160];
 
-         sprintf(f_name, "%s.%d", name, cnt++);
+         snprintf(f_name, sizeof(f_name), "%s.%d", name, cnt++);
          save_as(f_name, x, y, sdx, sdy);
       }
 }

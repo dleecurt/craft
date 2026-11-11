@@ -68,6 +68,13 @@ robot::robot(int my_color, int my_pno)
       num_building_sites = 0;
       num_attack = 0;
       num_hasar = 0;
+      num_ships = 0;
+      num_knights = 0;
+      num_archers = 0;
+      num_traders = 0;
+      num_catas = 0;
+      num_doktors = 0;
+      num_running = 0;
       should_construct = false;
       should_to_ship = false;
       just_finished = -1;
@@ -135,10 +142,8 @@ int other_home(int h)
 void robot::eval()
 {
    int exec_cnt = 0;
-   bool worker_set_idle;
+   bool worker_set_idle = false;
    double s_time = x_sys_time();
-   int a = 0;
-   int b = 0;
 
    if ((ticker % 15) == 0)
    { // perform_a_bit
@@ -255,7 +260,6 @@ void robot::eval()
                if (!objects->is_free[o] && objects->color[o] == color)
                { // exec_object
                   exec_cnt++;
-                  a = objects->type[o];
                   if (objects->cmd[o][0] == cmd_idle)
                   { // gen_new_order
                      switch (objects->type[o])
@@ -271,12 +275,10 @@ void robot::eval()
                                           > ilf->num_homes[ilf->f[objects->x[o]][objects->y[o]]]
                                                 * 2))
                            {
-                              b = 1;
                               worker_to_ship(o);
                            };
                            if ((objects->cmd[o][0] == cmd_idle) && (num_heapies_required > 0))
                            {
-                              b = 2;
                               { // gen_heapie
                                  num_heapies_required--;
                                  if (can_walk_to(5, o, heap_x[num_heapies_required],
@@ -287,8 +289,6 @@ void robot::eval()
                                     {
                                     case land_water:
                                     { // cross_river
-                                       int x;
-                                       int y;
                                        int dxx;
                                        int dyy;
                                        int length;
@@ -439,7 +439,6 @@ void robot::eval()
                                        + players[pno]->town_hall_in_progress
                                    < 2))
                            {
-                              b = 3;
                               { // gen_town_hall
                                  int x;
                                  int y;
@@ -471,7 +470,6 @@ void robot::eval()
                                        { // grab_mine
                                           best_x = x;
                                           best_y = y;
-                                          best_f = f->f[x][y];
                                           best_dist = ((cx - x) * (cx - x) + (cy - y) * (cy - y));
                                           any_gold = true;
                                        }
@@ -573,9 +571,8 @@ void robot::eval()
                                     }
                                     else
                                     { // start_harvest
-                                       if (num_miners > 0
-                                               && (double)num_lumber_jacks / (double)num_miners
-                                                      < 0.4
+                                       if ((num_miners > 0
+                                            && (double)num_lumber_jacks / (double)num_miners < 0.4)
                                            || (num_traders > 3 && num_miners > 3))
                                        { // do_harvest_wood
                                           int x;
@@ -642,7 +639,6 @@ void robot::eval()
                                              double best_dist = DBL_MAX;
                                              int best_x;
                                              int best_y;
-                                             int best_f;
 
                                              any_gold = false;
                                              for (int p = 0; p < max_objects; p++)
@@ -658,7 +654,6 @@ void robot::eval()
                                                 { // grab_mine
                                                    best_x = x;
                                                    best_y = y;
-                                                   best_f = f->f[x][y];
                                                    best_dist = ((cx - x) * (cx - x)
                                                                 + (cy - y) * (cy - y));
                                                    any_gold = true;
@@ -698,7 +693,6 @@ void robot::eval()
                                    && players[pno]->money > price_farm
                                    && players[pno]->wood > wood_farm))
                            {
-                              b = 4;
                               { // gen_farm
                                  int x;
                                  int y;
@@ -729,7 +723,6 @@ void robot::eval()
                                              best_dist
                                                  = ((cx - x) * (cx - x) + (cy - y) * (cy - y));
                                              best_pf = pf->f[x][y];
-                                             best_f = f->f[x][y];
                                              best_x = x;
                                              best_y = y;
                                              any_place = true;
@@ -750,7 +743,6 @@ void robot::eval()
                                && (is_water_world && players[pno]->num_docks < 1
                                    && num_building_sites == 0))
                            {
-                              b = 5;
                               { // gen_docks
                                  int xd = objects->x[o];
                                  int yd = objects->y[o];
@@ -771,11 +763,10 @@ void robot::eval()
                                    && players[pno]->money > price_market
                                    && players[pno]->wood > wood_market))
                            {
-                              b = 6;
                               { // gen_market
-                                 int x;
-                                 int y;
-                                 bool any_place;
+                                 int x = 0;
+                                 int y = 0;
+                                 bool any_place = false;
 
                                  { // get_gold_tp
                                     int best_pot = INT_MAX;
@@ -859,7 +850,6 @@ void robot::eval()
                                    && players[pno]->money > price_uni
                                    && players[pno]->wood > wood_uni))
                            {
-                              b = 7;
                               { // gen_uni
                                  int x;
                                  int y;
@@ -890,7 +880,6 @@ void robot::eval()
                                              best_dist
                                                  = ((cx - x) * (cx - x) + (cy - y) * (cy - y));
                                              best_pf = pf->f[x][y];
-                                             best_f = f->f[x][y];
                                              best_x = x;
                                              best_y = y;
                                              any_place = true;
@@ -915,7 +904,6 @@ void robot::eval()
                                    && players[pno]->money > price_camp
                                    && players[pno]->wood > wood_camp))
                            {
-                              b = 8;
                               { // gen_camp
                                  int x;
                                  int y;
@@ -946,7 +934,6 @@ void robot::eval()
                                              best_dist
                                                  = ((cx - x) * (cx - x) + (cy - y) * (cy - y));
                                              best_pf = pf->f[x][y];
-                                             best_f = f->f[x][y];
                                              best_x = x;
                                              best_y = y;
                                              any_place = true;
@@ -970,7 +957,6 @@ void robot::eval()
                                    && players[pno]->money > price_mill
                                    && players[pno]->wood > wood_mill))
                            {
-                              b = 9;
                               { // gen_mill
                                  int x;
                                  int y;
@@ -1001,7 +987,6 @@ void robot::eval()
                                              best_dist
                                                  = ((cx - x) * (cx - x) + (cy - y) * (cy - y));
                                              best_pf = pf->f[x][y];
-                                             best_f = f->f[x][y];
                                              best_x = x;
                                              best_y = y;
                                              any_place = true;
@@ -1025,7 +1010,6 @@ void robot::eval()
                                    && players[pno]->money > price_smith
                                    && players[pno]->wood > wood_smith))
                            {
-                              b = 10;
                               { // gen_smith
                                  int x;
                                  int y;
@@ -1056,7 +1040,6 @@ void robot::eval()
                                              best_dist
                                                  = ((cx - x) * (cx - x) + (cy - y) * (cy - y));
                                              best_pf = pf->f[x][y];
-                                             best_f = f->f[x][y];
                                              best_x = x;
                                              best_y = y;
                                              any_place = true;
@@ -1076,7 +1059,6 @@ void robot::eval()
                            if ((objects->cmd[o][0] == cmd_idle)
                                && (num_trapies_required > 0 && num_trap_run < 1))
                            {
-                              b = 11;
                               { // gen_trap
                                  num_trapies_required--;
                                  if (can_walk_to(6, o, trap_x[num_trapies_required],
@@ -1135,7 +1117,6 @@ void robot::eval()
                                    && players[pno]->wood > wood_trader && num_traders < 3
                                    && num_miners > 2 && num_lumber_jacks > 2))
                            {
-                              b = 12;
                               { // gen_trader
                                  int u = unit[x_market][y_market];
 
@@ -1147,13 +1128,11 @@ void robot::eval()
                            };
                            if ((objects->cmd[o][0] == cmd_idle) && need_a_captain > 0)
                            {
-                              b = 13;
                               move_to_ship(o);
                            };
                            if ((objects->cmd[o][0] == cmd_idle)
                                && (players[pno]->num_town_halls > 0))
                            {
-                              b = 14;
                               { // gen_harvester
                                  if ((objects->home_id[o] >= max_objects
                                       || objects->home_id[o] == none
@@ -1192,8 +1171,8 @@ void robot::eval()
                                  }
                                  else
                                  { // start_harvest
-                                    if (num_miners > 0
-                                            && (double)num_lumber_jacks / (double)num_miners < 0.4
+                                    if ((num_miners > 0
+                                         && (double)num_lumber_jacks / (double)num_miners < 0.4)
                                         || (num_traders > 3 && num_miners > 3))
                                     { // do_harvest_wood
                                        int x;
@@ -1259,7 +1238,6 @@ void robot::eval()
                                           double best_dist = DBL_MAX;
                                           int best_x;
                                           int best_y;
-                                          int best_f;
 
                                           any_gold = false;
                                           for (int p = 0; p < max_objects; p++)
@@ -1275,7 +1253,6 @@ void robot::eval()
                                              { // grab_mine
                                                 best_x = x;
                                                 best_y = y;
-                                                best_f = f->f[x][y];
                                                 best_dist
                                                     = ((cx - x) * (cx - x) + (cy - y) * (cy - y));
                                                 any_gold = true;
@@ -1307,15 +1284,13 @@ void robot::eval()
                                  }
                               }
                            };
-                           if ((objects->cmd[o][0] == cmd_idle))
+                           if (objects->cmd[o][0] == cmd_idle)
                            {
                               objects->new_order(o, cmd_wait, i_random(100, 300), 0);
-                              b = 15;
                            }
                         }
                      };
-                        b = 1;
-                        break;
+                     break;
                      case object_market:
                      { // handle_market
                         x_market = objects->x[o];
@@ -1323,8 +1298,7 @@ void robot::eval()
                         objects->money_limit[o] = 0;
                         objects->wood_limit[o] = 700;
                      };
-                        b = 2;
-                        break;
+                     break;
                      case object_home:
                      { // handle_home
                         int h = home_id(o);
@@ -1332,8 +1306,9 @@ void robot::eval()
 
                         if (h_mine[other] == -1 || h_cnt[h] <= h_cnt[other])
                         { // perform_home_action
-                           int hid = home_id(o);
-                           int il;
+                           int il = 0;
+
+                           home_id(o); // aborts with "home error" if o is not a home
 
                            if (is_water_world)
                               il = isle(objects->x[o], objects->y[o]);
@@ -1375,35 +1350,27 @@ void robot::eval()
                            should_construct = true;
                         }
                      };
-                        b = 3;
-                        break;
+                     break;
                      case object_mill:
                         handle_mill();
-                        b = 4;
                         break;
                      case object_smith:
                         handle_smith();
-                        b = 5;
                         break;
                      case object_uni:
                         handle_uni();
-                        b = 6;
                         break;
                      case object_camp:
                         handle_camp();
-                        b = 7;
                         break;
                      case object_docks:
                         handle_docks();
-                        b = 8;
                         break;
                      case object_pawn:
                         handle_pawn();
-                        b = 9;
                         break;
                      case object_trader:
                         handle_trader();
-                        b = 10;
                         break;
                      case object_knight:
                      { // handle_knight
@@ -1413,15 +1380,12 @@ void robot::eval()
                            objects->idle_attack_r[o] = 3;
                         move_a_bit();
                      };
-                        b = 11;
-                        break;
+                     break;
                      case object_archer:
                         handle_archer();
-                        b = 12;
                         break;
                      case object_cata:
                         handle_cata();
-                        b = 13;
                         break;
                      case object_doktor:
                      { // handle_doktor
@@ -1454,8 +1418,7 @@ void robot::eval()
                               move_a_bit();
                         }
                      };
-                        b = 14;
-                        break;
+                     break;
                      case object_ship1:
                      {    // handle_ship
                         { // idle_captain
@@ -1704,8 +1667,7 @@ void robot::eval()
                         break;
                         }
                      };
-                        b = 15;
-                        break;
+                     break;
                      }
                   }
                   else if ((objects->type[o] == object_worker
@@ -1820,7 +1782,6 @@ void robot::eval()
                   if (!objects->is_free[o] && objects->color[o] == color)
                   { // exec_object
                      exec_cnt++;
-                     a = objects->type[o];
                      if (objects->cmd[o][0] == cmd_idle)
                      { // gen_new_order
                         switch (objects->type[o])
@@ -1836,12 +1797,10 @@ void robot::eval()
                                              > ilf->num_homes[ilf->f[objects->x[o]][objects->y[o]]]
                                                    * 2))
                               {
-                                 b = 1;
                                  worker_to_ship(o);
                               };
                               if ((objects->cmd[o][0] == cmd_idle) && (num_heapies_required > 0))
                               {
-                                 b = 2;
                                  { // gen_heapie
                                     num_heapies_required--;
                                     if (can_walk_to(5, o, heap_x[num_heapies_required],
@@ -1852,8 +1811,6 @@ void robot::eval()
                                        {
                                        case land_water:
                                        { // cross_river
-                                          int x;
-                                          int y;
                                           int dxx;
                                           int dyy;
                                           int length;
@@ -2004,7 +1961,6 @@ void robot::eval()
                                           + players[pno]->town_hall_in_progress
                                       < 2))
                               {
-                                 b = 3;
                                  { // gen_town_hall
                                     int x;
                                     int y;
@@ -2037,7 +1993,6 @@ void robot::eval()
                                           { // grab_mine
                                              best_x = x;
                                              best_y = y;
-                                             best_f = f->f[x][y];
                                              best_dist
                                                  = ((cx - x) * (cx - x) + (cy - y) * (cy - y));
                                              any_gold = true;
@@ -2144,9 +2099,9 @@ void robot::eval()
                                        }
                                        else
                                        { // start_harvest
-                                          if (num_miners > 0
-                                                  && (double)num_lumber_jacks / (double)num_miners
-                                                         < 0.4
+                                          if ((num_miners > 0
+                                               && (double)num_lumber_jacks / (double)num_miners
+                                                      < 0.4)
                                               || (num_traders > 3 && num_miners > 3))
                                           { // do_harvest_wood
                                              int x;
@@ -2213,7 +2168,6 @@ void robot::eval()
                                                 double best_dist = DBL_MAX;
                                                 int best_x;
                                                 int best_y;
-                                                int best_f;
 
                                                 any_gold = false;
                                                 for (int p = 0; p < max_objects; p++)
@@ -2230,7 +2184,6 @@ void robot::eval()
                                                    { // grab_mine
                                                       best_x = x;
                                                       best_y = y;
-                                                      best_f = f->f[x][y];
                                                       best_dist = ((cx - x) * (cx - x)
                                                                    + (cy - y) * (cy - y));
                                                       any_gold = true;
@@ -2270,7 +2223,6 @@ void robot::eval()
                                       && players[pno]->money > price_farm
                                       && players[pno]->wood > wood_farm))
                               {
-                                 b = 4;
                                  { // gen_farm
                                     int x;
                                     int y;
@@ -2302,7 +2254,6 @@ void robot::eval()
                                                 best_dist
                                                     = ((cx - x) * (cx - x) + (cy - y) * (cy - y));
                                                 best_pf = pf->f[x][y];
-                                                best_f = f->f[x][y];
                                                 best_x = x;
                                                 best_y = y;
                                                 any_place = true;
@@ -2323,7 +2274,6 @@ void robot::eval()
                                   && (is_water_world && players[pno]->num_docks < 1
                                       && num_building_sites == 0))
                               {
-                                 b = 5;
                                  { // gen_docks
                                     int xd = objects->x[o];
                                     int yd = objects->y[o];
@@ -2345,11 +2295,10 @@ void robot::eval()
                                       && players[pno]->money > price_market
                                       && players[pno]->wood > wood_market))
                               {
-                                 b = 6;
                                  { // gen_market
-                                    int x;
-                                    int y;
-                                    bool any_place;
+                                    int x = 0;
+                                    int y = 0;
+                                    bool any_place = false;
 
                                     { // get_gold_tp
                                        int best_pot = INT_MAX;
@@ -2435,7 +2384,6 @@ void robot::eval()
                                       && players[pno]->money > price_uni
                                       && players[pno]->wood > wood_uni))
                               {
-                                 b = 7;
                                  { // gen_uni
                                     int x;
                                     int y;
@@ -2467,7 +2415,6 @@ void robot::eval()
                                                 best_dist
                                                     = ((cx - x) * (cx - x) + (cy - y) * (cy - y));
                                                 best_pf = pf->f[x][y];
-                                                best_f = f->f[x][y];
                                                 best_x = x;
                                                 best_y = y;
                                                 any_place = true;
@@ -2492,7 +2439,6 @@ void robot::eval()
                                       && players[pno]->money > price_camp
                                       && players[pno]->wood > wood_camp))
                               {
-                                 b = 8;
                                  { // gen_camp
                                     int x;
                                     int y;
@@ -2524,7 +2470,6 @@ void robot::eval()
                                                 best_dist
                                                     = ((cx - x) * (cx - x) + (cy - y) * (cy - y));
                                                 best_pf = pf->f[x][y];
-                                                best_f = f->f[x][y];
                                                 best_x = x;
                                                 best_y = y;
                                                 any_place = true;
@@ -2548,7 +2493,6 @@ void robot::eval()
                                       && players[pno]->money > price_mill
                                       && players[pno]->wood > wood_mill))
                               {
-                                 b = 9;
                                  { // gen_mill
                                     int x;
                                     int y;
@@ -2580,7 +2524,6 @@ void robot::eval()
                                                 best_dist
                                                     = ((cx - x) * (cx - x) + (cy - y) * (cy - y));
                                                 best_pf = pf->f[x][y];
-                                                best_f = f->f[x][y];
                                                 best_x = x;
                                                 best_y = y;
                                                 any_place = true;
@@ -2604,7 +2547,6 @@ void robot::eval()
                                       && players[pno]->money > price_smith
                                       && players[pno]->wood > wood_smith))
                               {
-                                 b = 10;
                                  { // gen_smith
                                     int x;
                                     int y;
@@ -2636,7 +2578,6 @@ void robot::eval()
                                                 best_dist
                                                     = ((cx - x) * (cx - x) + (cy - y) * (cy - y));
                                                 best_pf = pf->f[x][y];
-                                                best_f = f->f[x][y];
                                                 best_x = x;
                                                 best_y = y;
                                                 any_place = true;
@@ -2656,7 +2597,6 @@ void robot::eval()
                               if ((objects->cmd[o][0] == cmd_idle)
                                   && (num_trapies_required > 0 && num_trap_run < 1))
                               {
-                                 b = 11;
                                  { // gen_trap
                                     num_trapies_required--;
                                     if (can_walk_to(6, o, trap_x[num_trapies_required],
@@ -2715,7 +2655,6 @@ void robot::eval()
                                       && players[pno]->wood > wood_trader && num_traders < 3
                                       && num_miners > 2 && num_lumber_jacks > 2))
                               {
-                                 b = 12;
                                  { // gen_trader
                                     int u = unit[x_market][y_market];
 
@@ -2727,13 +2666,11 @@ void robot::eval()
                               };
                               if ((objects->cmd[o][0] == cmd_idle) && need_a_captain > 0)
                               {
-                                 b = 13;
                                  move_to_ship(o);
                               };
                               if ((objects->cmd[o][0] == cmd_idle)
                                   && (players[pno]->num_town_halls > 0))
                               {
-                                 b = 14;
                                  { // gen_harvester
                                     if ((objects->home_id[o] >= max_objects
                                          || objects->home_id[o] == none
@@ -2772,9 +2709,8 @@ void robot::eval()
                                     }
                                     else
                                     { // start_harvest
-                                       if (num_miners > 0
-                                               && (double)num_lumber_jacks / (double)num_miners
-                                                      < 0.4
+                                       if ((num_miners > 0
+                                            && (double)num_lumber_jacks / (double)num_miners < 0.4)
                                            || (num_traders > 3 && num_miners > 3))
                                        { // do_harvest_wood
                                           int x;
@@ -2841,7 +2777,6 @@ void robot::eval()
                                              double best_dist = DBL_MAX;
                                              int best_x;
                                              int best_y;
-                                             int best_f;
 
                                              any_gold = false;
                                              for (int p = 0; p < max_objects; p++)
@@ -2857,7 +2792,6 @@ void robot::eval()
                                                 { // grab_mine
                                                    best_x = x;
                                                    best_y = y;
-                                                   best_f = f->f[x][y];
                                                    best_dist = ((cx - x) * (cx - x)
                                                                 + (cy - y) * (cy - y));
                                                    any_gold = true;
@@ -2889,15 +2823,13 @@ void robot::eval()
                                     }
                                  }
                               };
-                              if ((objects->cmd[o][0] == cmd_idle))
+                              if (objects->cmd[o][0] == cmd_idle)
                               {
                                  objects->new_order(o, cmd_wait, i_random(100, 300), 0);
-                                 b = 15;
                               }
                            }
                         };
-                           b = 1;
-                           break;
+                        break;
                         case object_market:
                         { // handle_market
                            x_market = objects->x[o];
@@ -2905,8 +2837,7 @@ void robot::eval()
                            objects->money_limit[o] = 0;
                            objects->wood_limit[o] = 700;
                         };
-                           b = 2;
-                           break;
+                        break;
                         case object_home:
                         { // handle_home
                            int h = home_id(o);
@@ -2914,8 +2845,9 @@ void robot::eval()
 
                            if (h_mine[other] == -1 || h_cnt[h] <= h_cnt[other])
                            { // perform_home_action
-                              int hid = home_id(o);
-                              int il;
+                              int il = 0;
+
+                              home_id(o); // aborts with "home error" if o is not a home
 
                               if (is_water_world)
                                  il = isle(objects->x[o], objects->y[o]);
@@ -2960,35 +2892,27 @@ void robot::eval()
                               should_construct = true;
                            }
                         };
-                           b = 3;
-                           break;
+                        break;
                         case object_mill:
                            handle_mill();
-                           b = 4;
                            break;
                         case object_smith:
                            handle_smith();
-                           b = 5;
                            break;
                         case object_uni:
                            handle_uni();
-                           b = 6;
                            break;
                         case object_camp:
                            handle_camp();
-                           b = 7;
                            break;
                         case object_docks:
                            handle_docks();
-                           b = 8;
                            break;
                         case object_pawn:
                            handle_pawn();
-                           b = 9;
                            break;
                         case object_trader:
                            handle_trader();
-                           b = 10;
                            break;
                         case object_knight:
                         { // handle_knight
@@ -2998,15 +2922,12 @@ void robot::eval()
                               objects->idle_attack_r[o] = 3;
                            move_a_bit();
                         };
-                           b = 11;
-                           break;
+                        break;
                         case object_archer:
                            handle_archer();
-                           b = 12;
                            break;
                         case object_cata:
                            handle_cata();
-                           b = 13;
                            break;
                         case object_doktor:
                         { // handle_doktor
@@ -3040,8 +2961,7 @@ void robot::eval()
                                  move_a_bit();
                            }
                         };
-                           b = 14;
-                           break;
+                        break;
                         case object_ship1:
                         {    // handle_ship
                            { // idle_captain
@@ -3290,8 +3210,7 @@ void robot::eval()
                            break;
                            }
                         };
-                           b = 15;
-                           break;
+                        break;
                         }
                      }
                      else if ((objects->type[o] == object_worker
@@ -3473,8 +3392,9 @@ bool robot::need_another_worker(int il)
        ((players[pno]->num_camps > 0 && num_workers < worker_limit * players[pno]->num_town_halls)
         || (players[pno]->num_camps < 1
             && num_workers < worker_limit / 2 * players[pno]->num_town_halls))
-       || (is_water_world && (ilf->num_worker[il] < ilf->num_homes[il] * 2 + 3))
-              && players[pno]->money > price_worker);
+       /* As written, money is only checked in the water-world case. */
+       || ((is_water_world && (ilf->num_worker[il] < ilf->num_homes[il] * 2 + 3))
+           && players[pno]->money > price_worker));
 }
 
 void robot::worker_to_ship(int o)
@@ -3600,7 +3520,7 @@ void robot::move_a_bit()
                pot += (int)((double)(f->max_p - f->f[x][y]));
          }
       }
-      if ((objects->atta_x[o] != -1))
+      if (objects->atta_x[o] != -1)
       { // handle_bad_boy
          int d = 1;
 
@@ -3653,7 +3573,7 @@ void robot::move_a_bit()
                d = 0;
             }
          }
-         if ((objects->type[o] != object_worker && pf->f[x][y] != 0))
+         if (objects->type[o] != object_worker && pf->f[x][y] != 0)
             pf->down(x, y);
          if ((unit[x][y] != none && unit[x][y] != o)
              || (objects->type[o] != object_worker && pf->f[x][y] != 0))
@@ -3671,7 +3591,7 @@ void robot::move_a_bit()
          }
          else
          { // handle_goal_unreachable
-            if ((objects->type[o] != object_worker && pf->f[objects->x[o]][objects->y[o]] > 0))
+            if (objects->type[o] != object_worker && pf->f[objects->x[o]][objects->y[o]] > 0)
             { // try_to_escape
                int x = objects->x[o];
                int y = objects->y[o];
@@ -3739,7 +3659,7 @@ void robot::move_a_bit()
 
 void robot::handle_camp()
 {
-   int il;
+   int il = 0;
 
    if (is_water_world)
       il = isle(objects->x[o], objects->y[o]);
@@ -3760,7 +3680,7 @@ void robot::handle_docks()
 
 void robot::handle_smith()
 {
-   int il;
+   int il = 0;
 
    if (is_water_world)
       il = isle(objects->x[o], objects->y[o]);
@@ -3772,7 +3692,7 @@ void robot::handle_smith()
 
 void robot::handle_uni()
 {
-   int il;
+   int il = 0;
 
    if (is_water_world)
       il = isle(objects->x[o], objects->y[o]);
@@ -3784,7 +3704,7 @@ void robot::handle_uni()
 
 void robot::handle_mill()
 {
-   int il;
+   int il = 0;
 
    if (is_water_world)
       il = isle(objects->x[o], objects->y[o]);
@@ -3844,12 +3764,11 @@ void robot::handle_cata()
       move_a_bit();
 }
 
-bool robot::can_walk_to(int reason, int id, int x, int y, int dist, bool force_it)
+bool robot::can_walk_to(int /* reason */, int id, int x, int y, int dist, bool force_it)
 
 {
    bool res;
 
-   double yyt = x_sys_time();
    objects->gx[id][0] = x;
    objects->gy[id][0] = y;
    res = objects->man_plan_path(id, dist, true);
@@ -3965,7 +3884,7 @@ void robot::clean_mid(int o)
       }
 }
 
-void robot::set_mid(int o, int hx, int hy, int m)
+void robot::set_mid(int /* o */, int hx, int hy, int m)
 {
    for (int i = 0; i < 2; i++)
       if (h_mine[i] == -1)
@@ -4007,7 +3926,7 @@ void robot::check_f(int x, int y, int dx, int dy)
    int yy = y + dy;
    int d = direction(dx, dy);
 
-   if ((0 <= xx && xx < landscape_dx && 0 <= yy && yy < landscape_dy))
+   if (0 <= xx && xx < landscape_dx && 0 <= yy && yy < landscape_dy)
    { // perform_check
       if (b_on(ppf->f[x][y], d))
       { // handle_perhaps_off
@@ -4101,6 +4020,7 @@ bool robot::look_for_dock_place(int &x, int &y)
       if (look_for_dock_place(x, y, dd.dx, dd.dy))
          return true;
    }
+   return false;
 }
 
 bool robot::enter_goal(int o, int &xg, int &yg)
@@ -4112,8 +4032,8 @@ bool robot::enter_goal(int o, int &xg, int &yg)
    objects->s[o]->get_crew(n_worker, n_fighter, n_healer);
    if (n_fighter > 2)
    { // look_for_a_nice_goal
-      int xx;
-      int yy;
+      int xx = 0;
+      int yy = 0;
       double best_dist = DBL_MAX;
       int xo = objects->x[o];
       int yo = objects->y[o];

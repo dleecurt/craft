@@ -9,6 +9,7 @@
 /*======================================================================*/
 
 #include "multi_dial.h"
+#include "errorhandling.h"
 #include "masks.h"
 
 #define font "-misc-*-*-*-*-*-*-*-*-*-*-*-*-*"
@@ -94,13 +95,13 @@ void multi_dial::save(char name[])
 void multi_dial::load(char name[])
 {
    FILE *f;
-   bool exists;
 
    if ((f = fopen(complete(name, ".mulopt"), "r")) != NULL)
    {    // perform_load
       { // read_values
          for (int i = 0; i < num_buttons; i++)
-            fscanf(f, "%d", &values[i]);
+            if (fscanf(f, "%d", &values[i]) != 1)
+               break;
       }
       fclose(f);
    }
@@ -131,7 +132,7 @@ bool multi_dial::press(int bno, bool mode)
 
 bool multi_dial::get_cmd(char cmds[], int &p, char cmd[])
 {
-   if ((p >= strlen(cmds)))
+   if ((p >= (int)strlen(cmds)))
       return false;
    else
    { // read_cmd
@@ -140,7 +141,7 @@ bool multi_dial::get_cmd(char cmds[], int &p, char cmd[])
 
       if (cmds[p] == '$' || cmds[p] == '&')
          p++;
-      while (cmds[p] != ':' && !(p >= strlen(cmds)))
+      while (cmds[p] != ':' && !(p >= (int)strlen(cmds)))
       {
          { // handle_skip_mode
             if (cmds[p] == ';')

@@ -92,8 +92,6 @@ bool ship::enter(int id)
    if (num_man < capa)
    {
       { // perform_enter
-         int x;
-         int y;
          int pno = color_player[objects->color[myid]];
 
          unit[num_man] = id;
@@ -245,7 +243,6 @@ void ship::hit(int idh, int power)
 {
    if (num_man == 0 || i_random(0, 100) > 90)
    { // perform_ship_hit
-      int pno = color_player[objects->color[myid]];
 
       objects->health[myid] -= i_max(1, power - amour_ship1);
       objects->version[myid]++;

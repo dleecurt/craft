@@ -1,5 +1,6 @@
 
 #include "cmap.h"
+#include "errorhandling.h"
 #include "xbm.h"
 
 cmap::cmap(win *w_i, const char name_i[], bool preload, bool smart_load)
@@ -29,23 +30,21 @@ void cmap::set_color_trans(color_trans *t)
    is_color_trans = true;
 }
 
-void cmap::load(bool smart)
+void cmap::load(bool /* smart */)
 {
    { // load_image
       FILE *f;
 
       { // open_image_file
-         char i_file_name[256];
 
          f_open(f, complete(name, ".cmap"), "r");
       }
       { // read_dx_dy
          int d;
 
-         fscanf(f, "%d %d %d %d", &d, &dx, &dy, &d);
+         read_check(fscanf(f, "%d %d %d %d", &d, &dx, &dy, &d), 4, "picture file (.cmap)");
       }
       { // read_pixels
-         Pixmap back;
 
          w->function(GXcopy);
          { // draw_pixels
@@ -57,7 +56,7 @@ void cmap::load(bool smart)
                { // read_pixel
                   int c;
 
-                  fscanf(f, "%d", &c);
+                  read_check(fscanf(f, "%d", &c), 1, "picture file (.cmap)");
                   if (is_color_trans)
                      c = ct->trans(c);
                   if (c != last_c)

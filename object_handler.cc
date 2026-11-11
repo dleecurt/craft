@@ -531,7 +531,6 @@ void object_handler::exec_farm(int id)
 
             any_new = false;
             { // perhaps_new_field
-               int h = landhight[xx][yy];
 
                if (land_properties[landscape[xx][yy]].can_grow
                    && (landpic[xx][yy] == land_mud || landpic[xx][yy] == land_grass
@@ -1179,8 +1178,8 @@ void object_handler::exec_docks(int id)
             bool any_free_place;
 
             { // place_unit
-               int xx;
-               int yy;
+               int xx = 0;
+               int yy = 0;
 
                {    // get_free_place
                   { // calc_xx_yy
@@ -1434,7 +1433,6 @@ int object_handler::create_worker(int p_x, int p_y, int p_color, int home)
 void object_handler::exec_worker(int id)
 {
    { // consume_food
-      double f = players[color_player[color[id]]]->food;
 
       if (players[color_player[color[id]]]->food <= 0)
       { // reduce_health
@@ -1472,7 +1470,7 @@ void object_handler::exec_worker(int id)
          { // handle_no_way
             int g_unit = unit[x[id] + i_sign(gx[id][0] - x[id])][y[id] + i_sign(gy[id][0] - y[id])];
 
-            if ((g_unit != none && type[g_unit] == object_home && color[g_unit] == color[id]))
+            if (g_unit != none && type[g_unit] == object_home && color[g_unit] == color[id])
             {
                home_id[id] = g_unit;
                delay[id] = 3;
@@ -1500,7 +1498,7 @@ void object_handler::exec_worker(int id)
             else
                g_unit = none;
             delay[id] = 3;
-            if ((g_unit != none && type[g_unit] == object_home && color[g_unit] == color[id]))
+            if (g_unit != none && type[g_unit] == object_home && color[g_unit] == color[id])
                home_id[id] = g_unit;
          }
          delay_wait(id);
@@ -1755,7 +1753,7 @@ void object_handler::worker_hack(int id)
 
 void object_handler::worker_harvest(int id)
 {
-   if ((wood[id] != 0 || money[id] != 0))
+   if (wood[id] != 0 || money[id] != 0)
    { // try_to_move_home
       if (harvest_type[id] == harvest_wood || harvest_type[id] == harvest_gold)
       { // perform_to_home
@@ -1822,7 +1820,7 @@ void object_handler::worker_harvest(int id)
       }
       else
       { // move_to_harvest_place
-         bool any_goal;
+         bool any_goal = false;
 
          { // select_goal
             switch (harvest_type[id])
@@ -1949,10 +1947,10 @@ void object_handler::worker_harvest(int id)
 
 void object_handler::worker_upgrade(int id)
 {
-   int x_market;
-   int y_market;
+   int x_market = 0;
+   int y_market = 0;
    bool any_market;
-   int g_unit;
+   int g_unit = none;
    int dx;
    int dy;
 
@@ -2059,7 +2057,6 @@ int object_handler::create_trader(int p_x, int p_y, int p_color, int home)
 void object_handler::exec_trader(int id)
 {
    { // consume_food
-      double f = players[color_player[color[id]]]->food;
 
       if (players[color_player[color[id]]]->food <= 0)
       { // reduce_health
@@ -2100,7 +2097,7 @@ void object_handler::exec_trader(int id)
                g_unit = unit[gx[id][1]][gy[id][1]];
             else
                g_unit = none;
-            if ((g_unit != none && type[g_unit] == object_market && color[g_unit] == color[id]))
+            if (g_unit != none && type[g_unit] == object_market && color[g_unit] == color[id])
                home_id[id] = g_unit;
          }
       };
@@ -2283,7 +2280,7 @@ void object_handler::trader_trade(int id)
    if (((landscape[gx[id][0]][gy[id][0]] == land_t_wood && money[id] != 0)
         || (landscape[gx[id][0]][gy[id][0]] == land_t_gold && wood[id] != 0)))
    { // try_to_move_to_trade_point
-      if ((x[id] == gx[id][0] && y[id] == gy[id][0]))
+      if (x[id] == gx[id][0] && y[id] == gy[id][0])
       { // exit
          push_order(id, cmd_exec_trade, gx[id][0], gy[id][0]);
          t[id] = step_t * 2;
@@ -2295,10 +2292,10 @@ void object_handler::trader_trade(int id)
    }
    else
    { // try_to_move_to_market
-      int x_market;
-      int y_market;
+      int x_market = 0;
+      int y_market = 0;
       bool any_market;
-      int g_unit;
+      int g_unit = none;
       int dx;
       int dy;
 
@@ -2390,8 +2387,8 @@ bool object_handler::man_plan_path(int id, int min_dist, int max_n, bool probe)
    { // gen_new_path
       bool is_ship = (type[id] == object_ship1);
       bool cand_at_goal;
-      int xz;
-      int yz;
+      int xz = 0;
+      int yz = 0;
 
       { // init_field
          pv++;
@@ -2475,8 +2472,7 @@ bool object_handler::man_plan_path(int id, int min_dist, int max_n, bool probe)
                   }
                   cand_at_goal
                       = (d <= min_dist
-                         && (!cmd[id][1] == cmd_heap
-                             || landscape[gx[id][0]][gy[id][0]] == land_water
+                         && (cmd[id][1] != cmd_heap || landscape[gx[id][0]][gy[id][0]] == land_water
                              || landhight[px[cand]][py[cand]] - landhight[gx[id][0]][gy[id][0]] < 2)
                          && (type[id] != object_archer
                              || (min_dist < scope_archer - 1
@@ -2616,7 +2612,7 @@ void object_handler::man_plan_path(int id, int &cand, int x, int y, int dir, boo
       xx = x + dx;
       yy = y + dy;
    }
-   if ((0 <= xx && xx <= landscape_dx && 0 <= yy && yy <= landscape_dy))
+   if (0 <= xx && xx <= landscape_dx && 0 <= yy && yy <= landscape_dy)
    { // handle_step
       int ff;
       int ll;
@@ -2680,13 +2676,13 @@ void object_handler::man_step(int id, int dx, int dy)
 
       wx[id] = x_center(x[id]);
       wy[id] = y_center(y[id]);
-      if ((0 <= xx && xx < landscape_dx && 0 <= yy && yy < landscape_dy))
+      if (0 <= xx && xx < landscape_dx && 0 <= yy && yy < landscape_dy)
       { // handle_start
          int g_unit = unit[xx][yy];
 
-         if ((g_unit != none && type[g_unit] == object_ship1
-                  && (color[g_unit] == color[id] || s[g_unit]->empty())
-                  && s[g_unit]->num_man < s[g_unit]->capa
+         if (((g_unit != none && type[g_unit] == object_ship1
+               && (color[g_unit] == color[id] || s[g_unit]->empty())
+               && s[g_unit]->num_man < s[g_unit]->capa)
               || g_unit == unit[x[id]][y[id]]))
          { // perform_enter
             dir[id] = direction(dx, dy);
@@ -2723,7 +2719,6 @@ void object_handler::man_step(int id, int dx, int dy)
                    && (g_unit == none && land_properties[landscape[xx][yy]].walk_possible
                        && (i_abs(landhight[x[id]][y[id]] - landhight[xx][yy]) < 2))))
          { // perform_leave
-            int dh = landhight[x[id] + dx][y[id] + dy] - landhight[x[id]][y[id]];
 
             land_push(id, xx, yy);
             dir[id] = direction(dx, dy);
@@ -2876,9 +2871,8 @@ void object_handler::ship_step(int id, int dx, int dy)
 
    if (t[id] == step_t)
    { // start_move
-      int g_unit = none;
 
-      if ((0 <= xx && xx < landscape_dx - 1 && 0 <= yy && yy < landscape_dy - 1))
+      if (0 <= xx && xx < landscape_dx - 1 && 0 <= yy && yy < landscape_dy - 1)
       { // handle_start
          bool goal_field_free;
 
@@ -2886,8 +2880,8 @@ void object_handler::ship_step(int id, int dx, int dy)
             goal_field_free = true;
             for (int sx = xx; sx < xx + 3 && goal_field_free; sx++)
                for (int sy = yy; sy < yy + 3 && goal_field_free; sy++)
-                  if (sx < landscape_dx && sy < landscape_dy
-                          && !land_properties[landscape[sx][sy]].is_water
+                  if ((sx < landscape_dx && sy < landscape_dy
+                       && !land_properties[landscape[sx][sy]].is_water)
                       || (unit[sx][sy] != none && unit[sx][sy] != id))
                      goal_field_free = false;
          }
@@ -3075,7 +3069,7 @@ int object_handler::create_zombi(int id)
       if (ss != -1 && type[ss] == object_ship1)
          s[ss]->leave(id);
    }
-   if ((on_ship[id] == -1 && land_properties[landscape[x[id]][y[id]]].is_water))
+   if (on_ship[id] == -1 && land_properties[landscape[x[id]][y[id]]].is_water)
       create_swim(id);
    else
    {    // normal_zombi
@@ -3219,7 +3213,7 @@ int object_handler::create_schrott(int id)
       if (ss != -1 && type[ss] == object_ship1)
          s[ss]->leave(id);
    }
-   if ((on_ship[id] == -1 && land_properties[landscape[x[id]][y[id]]].is_water))
+   if (on_ship[id] == -1 && land_properties[landscape[x[id]][y[id]]].is_water)
       create_swim(id);
    else
    {    // normal_zombi
@@ -3569,7 +3563,6 @@ int object_handler::create_pawn(int p_x, int p_y, int p_color)
 void object_handler::exec_pawn(int id)
 {
    { // consume_food
-      double f = players[color_player[color[id]]]->food;
 
       if (players[color_player[color[id]]]->food <= 0)
       { // reduce_health
@@ -3619,15 +3612,15 @@ void object_handler::exec_pawn(int id)
          uu1 = unit[gx[id][0]][gy[id][0]];
          if (!(unit[gx[id][0]][gy[id][0]] == none
                || unit[gx[id][0]][gy[id][0]] != unit[x[id] + dxx][y[id] + dyy]
-               || type[unit[gx[id][0]][gy[id][0]]] == object_ship1
-                      && (color[unit[gx[id][0]][gy[id][0]]] == color[id]
-                          || s[unit[gx[id][0]][gy[id][0]]]->empty())))
+               || (type[unit[gx[id][0]][gy[id][0]]] == object_ship1
+                   && (color[unit[gx[id][0]][gy[id][0]]] == color[id]
+                       || s[unit[gx[id][0]][gy[id][0]]]->empty()))))
          {
             gx[id][0] = x[id] + dx;
             gy[id][0] = y[id] + dy;
             pop_order(id);
          }
-         else if ((x[id] == gx[id][0] && y[id] == gy[id][0]))
+         else if (x[id] == gx[id][0] && y[id] == gy[id][0])
             pop_order(id);
          else if (!(land_properties[landscape[gx[id][0]][gy[id][0]]].walk_possible
                     || landscape[gx[id][0]][gy[id][0]] == land_building
@@ -3835,10 +3828,10 @@ void object_handler::exec_pawn(int id)
 
 void object_handler::pawn_upgrade(int id)
 {
-   int x_tents;
-   int y_tents;
+   int x_tents = 0;
+   int y_tents = 0;
    bool any_tents;
-   int g_unit;
+   int g_unit = none;
    int dx;
    int dy;
 
@@ -3947,7 +3940,6 @@ int object_handler::create_scout(int p_x, int p_y, int p_color, int home_no)
 void object_handler::exec_scout(int id)
 {
    { // consume_food
-      double f = players[color_player[color[id]]]->food;
 
       if (players[color_player[color[id]]]->food <= 0)
       { // reduce_health
@@ -3994,15 +3986,15 @@ void object_handler::exec_scout(int id)
                || is_g_moving(unit[gx[id][0]][gy[id][0]]))
              && !(unit[gx[id][0]][gy[id][0]] == none
                   || unit[gx[id][0]][gy[id][0]] != unit[x[id] + dx][y[id] + dy]
-                  || type[unit[gx[id][0]][gy[id][0]]] == object_ship1
-                         && (color[unit[gx[id][0]][gy[id][0]]] == color[id]
-                             || s[unit[gx[id][0]][gy[id][0]]]->empty())))
+                  || (type[unit[gx[id][0]][gy[id][0]]] == object_ship1
+                      && (color[unit[gx[id][0]][gy[id][0]]] == color[id]
+                          || s[unit[gx[id][0]][gy[id][0]]]->empty()))))
          {
             gx[id][0] = x[id] + dx;
             gy[id][0] = y[id] + dy;
             pop_order(id);
          }
-         else if ((x[id] == gx[id][0] && y[id] == gy[id][0]))
+         else if (x[id] == gx[id][0] && y[id] == gy[id][0])
             pop_order(id);
          else if (!(land_properties[landscape[gx[id][0]][gy[id][0]]].walk_possible
                     || landscape[gx[id][0]][gy[id][0]] == land_building
@@ -4160,7 +4152,7 @@ void object_handler::scout_exec_hide(int id)
 
 /*--- ship -------------------------------------------------------------*/
 
-int object_handler::create_ship(int p_x, int p_y, int p_color, int p_dir, bool with_cata)
+int object_handler::create_ship(int p_x, int p_y, int p_color, int p_dir, bool /* with_cata */)
 
 {
    int id;
@@ -4178,9 +4170,6 @@ int object_handler::create_ship(int p_x, int p_y, int p_color, int p_dir, bool w
    if (id != none)
    {    // add_ship_data
       { // add_object_data
-         int pno = color_player[p_color];
-         int dx;
-         int dy;
 
          strcpy(name[id], "ship");
          color[id] = p_color;
@@ -4236,7 +4225,6 @@ int object_handler::create_ship(int p_x, int p_y, int p_color, int p_dir, bool w
 void object_handler::exec_ship(int id)
 {
    { // consume_food
-      double f = players[color_player[color[id]]]->food;
 
       if (players[color_player[color[id]]]->food <= 0)
       { // reduce_health
@@ -4486,8 +4474,6 @@ void object_handler::ship_attack(int id)
          for (int i = 0; i < s[id]->num_man; i++)
          { // start_one_attack
             int u = s[id]->unit[i];
-            int xa = gx[id][0];
-            int ya = gy[id][0];
             bool any_attack_started = false;
 
             if ((type[u] == object_cata || type[u] == object_archer)
@@ -4532,14 +4518,10 @@ void object_handler::ship_enter(int id)
             for (int i = 0; i < s[id]->num_man; i++)
             { // start_one_attack
                int u = s[id]->unit[i];
-               bool any_attack_started = false;
-               int xa = gx[id][0];
-               int ya = gy[id][0];
 
                if (!(cmd[u][0] == cmd_attack || cmd[u][1] == cmd_attack || cmd[u][2] == cmd_attack))
                {
                   new_order(u, cmd_attack, gx[id][0], gy[id][0]);
-                  any_attack_started = true;
                }
             }
             { // fix_enemy
@@ -4617,7 +4599,6 @@ int object_handler::create_knight(int p_x, int p_y, int p_color, int home_no, bo
 void object_handler::exec_knight(int id)
 {
    { // consume_food
-      double f = players[color_player[color[id]]]->food;
 
       if (players[color_player[color[id]]]->food <= 70 && !master[id])
       { // reduce_health
@@ -4665,13 +4646,13 @@ void object_handler::exec_knight(int id)
          dxx = i_sign(gx[id][0] - x[id]);
          dyy = i_sign(gy[id][0] - y[id]);
          if (!(uu == none || uu != unit[x[id] + dxx][y[id] + dyy]
-               || type[uu] == object_ship1 && (color[uu] == color[id] || s[uu]->empty())))
+               || (type[uu] == object_ship1 && (color[uu] == color[id] || s[uu]->empty()))))
          {
             gx[id][0] = x[id] + dx;
             gy[id][0] = y[id] + dy;
             pop_order(id);
          }
-         else if ((x[id] == gx[id][0] && y[id] == gy[id][0]))
+         else if (x[id] == gx[id][0] && y[id] == gy[id][0])
             pop_order(id);
          else if (!(land_properties[landscape[gx[id][0]][gy[id][0]]].walk_possible
                     || landscape[gx[id][0]][gy[id][0]] == land_building
@@ -4910,7 +4891,6 @@ int object_handler::create_archer(int p_x, int p_y, int p_color, int home_no)
 void object_handler::exec_archer(int id)
 {
    { // consume_food
-      double f = players[color_player[color[id]]]->food;
 
       if (players[color_player[color[id]]]->food <= 70)
       { // reduce_health
@@ -4961,7 +4941,7 @@ void object_handler::exec_archer(int id)
          else
             max_d = 5000;
          dir_dx_dy(dir[id], dx, dy);
-         if ((x[id] == gx[id][0] && y[id] == gy[id][0]))
+         if (x[id] == gx[id][0] && y[id] == gy[id][0])
          {
             pop_order(id);
          }
@@ -5040,7 +5020,6 @@ void object_handler::exec_archer(int id)
       case cmd_idle:
       { // archer_handle_idle
          int p = pic[id] - pic_archer_idle(color[id]);
-         bool over;
 
          if (!(0 <= p && p <= 30))
          { // set_idle_pick
@@ -5069,7 +5048,6 @@ void object_handler::exec_archer(int id)
                   in_formation[id] = true;
                   moving_goal[id] = u;
                   moving_id[id] = oid[u];
-                  over = true;
                }
             }
             else
@@ -5203,7 +5181,6 @@ int object_handler::create_cata(int p_x, int p_y, int p_color, int home_no)
 void object_handler::exec_cata(int id)
 {
    { // consume_food
-      double f = players[color_player[color[id]]]->food;
 
       if (players[color_player[color[id]]]->food <= 0)
       { // reduce_health
@@ -5232,7 +5209,7 @@ void object_handler::exec_cata(int id)
             int dx;
             int dy;
             int goal_dist;
-            int max_d;
+            int max_d = 0;
 
             if ((cmd[id][1] == cmd_attack || cmd[id][1] == cmd_sad || cmd[id][1] == cmd_fad)
                 && moving_goal[id] != none && moving_id[id] == oid[moving_goal[id]])
@@ -5252,7 +5229,7 @@ void object_handler::exec_cata(int id)
                else
                   goal_dist = 0;
             }
-            if ((x[id] == gx[id][0] && y[id] == gy[id][0]))
+            if (x[id] == gx[id][0] && y[id] == gy[id][0])
                pop_order(id);
             else if (!(land_properties[landscape[gx[id][0]][gy[id][0]]].walk_possible
                        || (unit[gx[id][0]][gy[id][0]] != none
@@ -5529,7 +5506,7 @@ void object_handler::archer_attack(int id)
 
       if (u != none
           && ((type[id] == object_cata && dist(x[id], y[id], gx[id][0], gy[id][0]) < 2)
-              || type[u] == object_ship1 && color[u] == color[id]))
+              || (type[u] == object_ship1 && color[u] == color[id])))
       {
          pop_order(id);
          moving_goal[id] = none;
@@ -5767,7 +5744,6 @@ int object_handler::create_doktor(int p_x, int p_y, int p_color, int home_no, bo
 void object_handler::exec_doktor(int id)
 {
    { // consume_food
-      double f = players[color_player[color[id]]]->food;
 
       if (players[color_player[color[id]]]->food <= 0)
       { // reduce_health
@@ -5970,7 +5946,7 @@ void object_handler::doktor_sad(int id)
       { // check_object
          if ((!is_free[i]
               && ((color[i] == color[id] && health[i] < 100)
-                  || color[i] != color[id] && type[i] == object_worker)
+                  || (color[i] != color[id] && type[i] == object_worker))
               && type[i] != object_mine && type[i] != object_zombi && type[i] != object_ship_zombi
               && type[i] != object_schrott
               && i_max(i_abs(gx[id][0] - x[i]), i_abs(gy[id][0] - y[i])) < sad_radius
@@ -6193,7 +6169,7 @@ int object_handler::create_arrow(int ax, int ay, int agx, int agy, int aid)
 
 void object_handler::exec_arrow(int id)
 {
-   if ((x[id] == gx[id][0] && y[id] == gy[id][0]))
+   if (x[id] == gx[id][0] && y[id] == gy[id][0])
    { // handle_hit
       int u = unit[x[id]][y[id]];
 
@@ -6301,7 +6277,7 @@ void object_handler::exec_stone(int id)
       pic[id]
           = i_bound(pic_stone, pic_stone + 6 - i_min(6, i_abs(buf[id] - t[id]) / 2), pic_stone + 6);
    }
-   if ((x[id] == gx[id][0] && y[id] == gy[id][0]))
+   if (x[id] == gx[id][0] && y[id] == gy[id][0])
    { // handle_hit
       int u = unit[x[id]][y[id]];
 
@@ -6386,12 +6362,10 @@ bool object_handler::direct_move(int id, int range, int &dx, int &dy)
 {
    int xx;
    int yy;
-   int cnt;
 
    { // init
       xx = x[id];
       yy = y[id];
-      cnt = 0;
    }
    dx = i_sign(gx[id][0] - xx);
    dy = i_sign(gy[id][0] - yy);
@@ -6697,7 +6671,7 @@ void object_handler::hit(int id, int e, int power)
          case object_uni:
             amour = amour_building;
             break;
-         otherwise:
+         default:
             amour = 0;
             break;
          }
@@ -6742,7 +6716,7 @@ void object_handler::exec_fighter_hit(int id)
          if ((i_abs(i_max(0, landhight[x[id]][y[id]]) - i_max(0, landhight[gx[id][0]][gy[id][0]]))
               < 2))
          { // exec_hit
-            int power;
+            int power = 0;
             int dh = landhight[x[u]][y[u]] - landhight[x[id]][y[id]];
 
             { // calc_power
@@ -7066,11 +7040,10 @@ int object_handler::create_building(int p_x, int p_y, int p_type, int p_money, i
 
 void object_handler::refresh(int lx, int ly)
 {
-   int u = unit[lx][ly];
 
    for (int i = 0; i < num_players; i++)
    { // show_one_player
-      if ((players[i]->active))
+      if (players[i]->active)
       { // perform_show
          players[i]->show(lx, ly);
       }
@@ -7277,7 +7250,8 @@ bool object_handler::can_built(int id, int x, int y, int cmd, bool is_robot)
    return can_built(id, x, y, x, y, cmd, is_robot);
 }
 
-bool object_handler::can_built(int id, int x0, int y0, int x, int y, int cmd, bool is_robot)
+bool object_handler::can_built(int /* id */, int x0, int y0, int /* x */, int /* y */, int cmd,
+                               bool is_robot)
 
 {
    switch (cmd)
@@ -7353,7 +7327,7 @@ bool object_handler::can_built(int id, int x0, int y0, int x, int y, int cmd, bo
                   }
             }
          }
-         if ((x0 < 1 || y0 < 1 || x0 > landscape_dx - 3 || y0 > landscape_dy - 3))
+         if (x0 < 1 || y0 < 1 || x0 > landscape_dx - 3 || y0 > landscape_dy - 3)
             building_can_be_placed = false;
          if (building_can_be_placed)
          { // check_any_water
@@ -7947,7 +7921,7 @@ void object_handler::readjust_land(int x, int y, int dh)
                      land_pic = land_grass;
                   else
                      land_pic = landscape[xx][yy];
-                  if (dd > 1 && landscape)
+                  if (dd > 1)
                      landoverlay[xx][yy][1] = land_step + land_profile(xx, yy, i_bound(1, dd, 1));
                   else
                      landoverlay[xx][yy][1] = none;

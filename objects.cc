@@ -28,11 +28,12 @@ void print(point p)
 
 void scan(point &p)
 {
-   float x;
-   float y;
-   float z;
+   float x = 0;
+   float y = 0;
+   float z = 0;
 
-   scanf("%f %f %f", &x, &y, &z);
+   if (scanf("%f %f %f", &x, &y, &z) != 3)
+      x = y = z = 0;
    p.x = x;
    p.y = y;
    p.z = z;
@@ -621,7 +622,7 @@ void xplane(cube c, int corner_no, int side_no, point &p0, point &p1, point &p2,
       corner_p = corner(c, corner_no);
       for (int i = 0; i < 4; i++)
       { // check_orient
-         if ((corner_p == p0))
+         if (corner_p == p0)
             break;
          else
          { // rotate
@@ -695,7 +696,7 @@ void xplane(cube c, int side_no, point &p0, point &p1, point &p2, point &pl)
    }
 }
 
-bool no_cut(cube c1, cube c2, bool is_dump)
+bool no_cut(cube c1, cube c2, bool /* is_dump */)
 {
    line edge_list[12];
 
@@ -960,6 +961,7 @@ plane bottom(cube c)
       if (intersect(pl, l, p))
          return pl;
    }
+   return xplane(c, 0);
 }
 
 plane top(cube c)
@@ -975,6 +977,7 @@ plane top(cube c)
       if (intersect(pl, l, p))
          return pl;
    }
+   return xplane(c, 0);
 }
 
 bool intersect(cube c, line l, point &ip, point &ip1)

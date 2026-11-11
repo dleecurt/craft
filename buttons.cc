@@ -43,7 +43,8 @@ button::button(win *b_w, const char b_label[], int b_x, int b_y, bool b_with_rep
 */
    }
    if (dx == by_default || dy == by_default)
-      if ((label[0] != '$' && label[0] != '/'))
+   {
+      if (label[0] != '$' && label[0] != '/')
       { // calc_text_dim
          int label_dx;
          int label_dy;
@@ -57,11 +58,11 @@ button::button(win *b_w, const char b_label[], int b_x, int b_y, bool b_with_rep
       }
       else
       { // calc_icon_dim
-         char button_name[128];
+         char button_name[2048];
 
          { // calc_button_name
             if (label[0] == '/')
-               sprintf(button_name, "%s/%s", button_dir, &label[1]);
+               snprintf(button_name, sizeof(button_name), "%s/%s", button_dir, &label[1]);
             else
                strcpy(button_name, &label[1]);
          }
@@ -72,6 +73,7 @@ button::button(win *b_w, const char b_label[], int b_x, int b_y, bool b_with_rep
          y_label = y + dy_border;
          is_icon = true;
       }
+   }
    { // get_background
 
       /* 
@@ -141,7 +143,8 @@ bool button::eval(int &button)
 
 void button::write(const char label_string[])
 {
-   strcpy(label, label_string);
+   if (label_string != label)
+      strcpy(label, label_string);
    write(label, is_pressed);
 }
 
@@ -190,11 +193,11 @@ void button::write(char label[], bool is_pressed)
    }
    if (is_icon)
    { // write_icon
-      char button_name[128];
+      char button_name[2048];
 
       { // calc_button_name
          if (label[0] == '/')
-            sprintf(button_name, "%s/%s", button_dir, &label[1]);
+            snprintf(button_name, sizeof(button_name), "%s/%s", button_dir, &label[1]);
          else
             strcpy(button_name, &label[1]);
       }

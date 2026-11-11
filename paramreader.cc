@@ -22,7 +22,6 @@ void check_params(int num_params)
 {
    if (num_params < 2)
    { // handle_param_error
-      system("sound /home/hua/sound/laughter");
       errorstop(2, "paramreader", "Oh boy, better play golf");
    }
 }
@@ -34,15 +33,17 @@ void check_params(int num_params)
 void paramreader::read_sym(char sym[], bool &is_eof)
 {
    is_eof = false;
-   fscanf(f[num_includes - 1], "%79s", sym);
+   if (fscanf(f[num_includes - 1], "%79s", sym) != 1)
+      strcpy(sym, "//");
    while ((sym[0] == '#' && strcmp(sym, "#include") != 0))
    { // skip_comment
-      char tc;
+      int tc;
 
-      while ((tc = getc(f[num_includes - 1])) != '\n' && tc != '#')
+      while ((tc = getc(f[num_includes - 1])) != '\n' && tc != '#' && tc != EOF)
       {
       };
-      fscanf(f[num_includes - 1], "%79s", sym);
+      if (fscanf(f[num_includes - 1], "%79s", sym) != 1)
+         strcpy(sym, "//");
    }
    if ((strcmp(name[num_params], "//") == 0))
    { // pop_f
@@ -55,7 +56,8 @@ void paramreader::read_sym(char sym[], bool &is_eof)
    }
    if (strcmp(sym, "#include") == 0)
    { // push_f
-      fscanf(f[num_includes - 1], "%79s", sym);
+      if (fscanf(f[num_includes - 1], "%79s", sym) != 1)
+         strcpy(sym, "//");
       num_includes++;
       f[num_includes - 1] = fopen(sym, "r");
       read_sym(sym, is_eof);

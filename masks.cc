@@ -93,14 +93,12 @@ bool yes(const char host[], const char question[])
    }
    { // get_answer
       bool answer = false;
-      int event_id = -1;
 
       ok_pressed = false;
       while (!answer)
       {
          { // try_to_get_the_answer
             w->mark_mouse();
-            event_id = w->event_id;
             ok_pressed = ok->eval();
             answer = ok_pressed || no->eval();
             w->scratch_mouse();
@@ -137,14 +135,12 @@ bool yes(win *parent, char host[], const char question[])
    }
    { // get_answer
       bool answer = false;
-      int event_id = -1;
 
       ok_pressed = false;
       while (!answer)
       {
          { // try_to_get_the_answer
             w->mark_mouse();
-            event_id = w->event_id;
             ok_pressed = ok->eval();
             answer = ok_pressed || no->eval();
             w->scratch_mouse();
@@ -188,7 +184,7 @@ void ack(const char host[], char message[])
       int y = 20;
       int rp = 0;
 
-      for (int i = 0; i < strlen(message); i++)
+      for (int i = 0; i < (int)strlen(message); i++)
       { // handle_char
          if (message[i] == '\n')
          { // handle_new_record
@@ -221,7 +217,6 @@ void ack(const char host[], char message[])
    }
    { // get_answer
       bool answer = false;
-      int event_id = -1;
 
       while (!answer)
       {

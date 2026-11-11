@@ -1,4 +1,5 @@
 #include "cmap_selector.h"
+#include "errorhandling.h"
 #include "bool.h"
 #include "xstring.h"
 #include "masks.h"
@@ -281,10 +282,10 @@ void get_file_list(const char pattern[], int &num_files,
       char cmd[512];
 
       if (strlen(file_name) == 0)
-         sprintf(cmd, "csh -f -c \"ls -F > filesel.temp\"");
+         sprintf(cmd, "ls -F > filesel.temp");
       else
-         sprintf(cmd, "csh -f -c \"ls -F %s > filesel.temp\"", file_name);
-      system(cmd);
+         sprintf(cmd, "ls -F %s > filesel.temp", file_name);
+      run_command(cmd);
    }
    { // read_file_list
       FILE *l_file;

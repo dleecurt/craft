@@ -8,7 +8,9 @@
 /*=                                                                    =*/
 /*======================================================================*/
 
+#include <ctype.h>
 #include "table.h"
+#include "errorhandling.h"
 
 #include "bool.h"
 #include "io.h"
@@ -35,10 +37,10 @@ table::table(char t_dir[], char t_name[], bool &is_new, int t_lru_size)
          lru_queue = new lru(lru_size);
    }
    { // perhaps_load_table
-      char f_name[128];
+      char f_name[256];
 
       is_new = true;
-      sprintf(f_name, "%s%s", dir, name);
+      snprintf(f_name, sizeof(f_name), "%s%s", dir, name);
       if (f_exists(f_name))
       {
          load();
@@ -79,9 +81,9 @@ void table::save()
    { // perhaps_swap_message
    }
    { // open_save_file
-      char fname[128];
+      char fname[256];
 
-      sprintf(fname, "%s%s", dir, name);
+      snprintf(fname, sizeof(fname), "%s%s", dir, name);
       f = fopen(fname, "w");
    }
    { // enter_dd
@@ -236,10 +238,10 @@ void table::save()
    }
    if (number_of_rows == 0)
    { // delete_empty_file
-      char cmd[128];
+      char cmd[256];
 
-      sprintf(cmd, "rm -f %s%s", dir, name);
-      system(cmd);
+      snprintf(cmd, sizeof(cmd), "%s%s", dir, name);
+      remove_file(cmd);
       printf("file '%s' was empty\n", name);
    }
 }
@@ -249,19 +251,22 @@ void table::load()
    FILE *f;
 
    { // open_load_file
-      char fname[128];
+      char fname[256];
 
-      sprintf(fname, "%s%s", dir, name);
+      snprintf(fname, sizeof(fname), "%s%s", dir, name);
       f = fopen(fname, "r");
    }
    { // load_dd
       int d;
 
-      fscanf(f, "%d %d %d %d %d", &number_of_columns, &number_of_rows, &column_length, &d, &id);
+      read_check(
+          fscanf(f, "%d %d %d %d %d", &number_of_columns, &number_of_rows, &column_length, &d, &id),
+          5, "table file");
       for (int i = 0; i < number_of_columns; i++)
       { // load_column
-         fscanf(f, "%127s %d %d %d\n", column_name[i], &column_type[i], &column_size[i],
-                &column_index[i]);
+         read_check(fscanf(f, "%127s %d %d %d\n", column_name[i], &column_type[i], &column_size[i],
+                           &column_index[i]),
+                    4, "table file");
       }
    }
    { // load_data
@@ -279,7 +284,7 @@ void table::load()
             { // read_int
                int k;
 
-               fscanf(f, "%d ", &k);
+               read_check(fscanf(f, "%d ", &k), 1, "table file");
                write(row_no, j, k);
             };
             break;
@@ -287,7 +292,7 @@ void table::load()
             { // read_float
                float k;
 
-               fscanf(f, "%f ", &k);
+               read_check(fscanf(f, "%f ", &k), 1, "table file");
                write(row_no, j, k);
             };
             break;
@@ -295,7 +300,7 @@ void table::load()
             { // read_text
                char t[128];
 
-               fscanf(f, "%127s ", t);
+               read_check(fscanf(f, "%127s ", t), 1, "table file");
                write(row_no, j, t);
             };
             break;
@@ -306,7 +311,7 @@ void table::load()
                float y;
                float z;
 
-               fscanf(f, "%f %f %f ", &x, &y, &z);
+               read_check(fscanf(f, "%f %f %f ", &x, &y, &z), 3, "table file");
                p.x = x;
                p.y = y;
                p.z = z;
@@ -315,7 +320,6 @@ void table::load()
             break;
             case col_type_cube:
             { // read_cube
-               cube c;
                float p0x;
                float p0y;
                float p0z;
@@ -329,8 +333,9 @@ void table::load()
                float p3y;
                float p3z;
 
-               fscanf(f, "%f %f %f %f %f %f %f %f %f %f %f %f ", &p0x, &p0y, &p0z, &p1x, &p1y, &p1z,
-                      &p2x, &p2y, &p2z, &p3x, &p3y, &p3z);
+               read_check(fscanf(f, "%f %f %f %f %f %f %f %f %f %f %f %f ", &p0x, &p0y, &p0z, &p1x,
+                                 &p1y, &p1z, &p2x, &p2y, &p2z, &p3x, &p3y, &p3z),
+                          12, "table file");
                write(row_no, j,
                      new_cube(new_point(p0x, p0y, p0z), new_point(p1x, p1y, p1z),
                               new_point(p2x, p2y, p2z), new_point(p3x, p3y, p3z)));
@@ -342,10 +347,10 @@ void table::load()
                float a;
                int size;
 
-               fscanf(f, "%d ", &size);
+               read_check(fscanf(f, "%d ", &size), 1, "table file");
                for (int g = 0; g < max_config_size; g++)
                {
-                  fscanf(f, "%f ", &a);
+                  read_check(fscanf(f, "%f ", &a), 1, "table file");
                   c.v[g] = a;
                }
                write(row_no, j, c);
@@ -353,18 +358,16 @@ void table::load()
             break;
             case col_type_vector:
             { // read_vector
-               vector v;
                float a0;
                float a1;
                float a2;
 
-               fscanf(f, "%f %f %f ", &a0, &a1, &a2);
+               read_check(fscanf(f, "%f %f %f ", &a0, &a1, &a2), 3, "table file");
                write(row_no, j, new_vector(a0, a1, a2));
             };
             break;
             case col_type_plane:
             { // read_plane
-               cube p;
                float p0x;
                float p0y;
                float p0z;
@@ -375,15 +378,24 @@ void table::load()
                float p2y;
                float p2z;
 
-               fscanf(f, "%f %f %f %f %f %f %f %f %f ", &p0x, &p0y, &p0z, &p1x, &p1y, &p1z, &p2x,
-                      &p2y, &p2z);
+               read_check(fscanf(f, "%f %f %f %f %f %f %f %f %f ", &p0x, &p0y, &p0z, &p1x, &p1y,
+                                 &p1z, &p2x, &p2y, &p2z),
+                          9, "table file");
                write(row_no, j,
                      new_plane(new_point(p0x, p0y, p0z), new_point(p1x, p1y, p1z),
                                new_point(p2x, p2y, p2z)));
             };
             break;
             }
-         fscanf(f, "\n");
+         { // skip_line_end
+            int ch;
+
+            while ((ch = getc(f)) != EOF && isspace(ch))
+            {
+            }
+            if (ch != EOF)
+               ungetc(ch, f);
+         }
       }
    }
    { // close_load_file
@@ -398,12 +410,13 @@ void table::rename(char new_name[])
 
 void table::rename(char new_dir[], char new_name[])
 {
-   char cmd[128];
 
    /* sprintf (cmd, "rm %s%s", dir, name);
    system  (cmd); */
-   strcpy(dir, new_dir);
-   strcpy(name, new_name);
+   if (new_dir != dir)
+      strcpy(dir, new_dir);
+   if (new_name != name)
+      strcpy(name, new_name);
    was_write_access = true;
 }
 
@@ -733,7 +746,7 @@ void table::write(int row_no, int column_no, char value[])
       errorstop(3, "table", msg, "wrong type", name);
    }
    { // check_size
-      if (strlen(value) > 120 || strlen(value) < 0)
+      if (strlen(value) > 120)
          printf("Miststst\n");
    }
    strcpy(&data[row_no * column_length + column_index[column_no]], value);
@@ -963,7 +976,7 @@ void open_table_handler(char global_table_dir[], char local_table_dir[])
       use_count[i] = 0;
       is_resident[i] = false;
       is_clean[i] = true;
-      strcmp(names[i], "");
+      strcpy(names[i], "");
    }
 }
 
@@ -999,7 +1012,7 @@ void flush_table_handler()
 table *table_open(char name[], bool &is_new, int paging_mode, int lru_size)
 
 {
-   int e;
+   int e = 0;
 
    { // get_free_entry
       int s = ++table_ticker;
@@ -1092,10 +1105,10 @@ void table_delete(table *t)
       errorstop(2, "table handler", "dangling pointer at delete");
    use_count[t->id] = 0;
    { // delete_file
-      char cmd[128];
+      char cmd[256];
 
-      sprintf(cmd, "rm -f %s%s", local_dir, names[t->id]);
-      system(cmd);
+      snprintf(cmd, sizeof(cmd), "%s%s", local_dir, names[t->id]);
+      remove_file(cmd);
    }
    strcpy(names[t->id], "");
 }

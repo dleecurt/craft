@@ -1,8 +1,8 @@
 #include "morph_edit.h"
 
-main(int num_params, char *shell_params[])
+int main(int num_params, char *shell_params[])
 {
-   if ((num_params < 3))
+   if (num_params < 4)
    { // usage
       printf("morph  <regions> <orig> <dest>\n");
       exit(0);

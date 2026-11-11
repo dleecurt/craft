@@ -29,8 +29,8 @@ bool bitmap_size(char name[], int &dx, int &dy)
       char d[128];
 
       f = fopen(name, "r");
-      fscanf(f, "%127s %127s %d", d, d, &dx);
-      fscanf(f, "%127s %127s %d", d, d, &dy);
+      read_check(fscanf(f, "%127s %127s %d", d, d, &dx), 3, "XBM bitmap");
+      read_check(fscanf(f, "%127s %127s %d", d, d, &dy), 3, "XBM bitmap");
       fclose(f);
       return true;
    }
@@ -64,7 +64,7 @@ void text_size(char s[], const char font[], int &dx, int &dy, int &num_lines)
       int rp;
 
       rp = 0;
-      for (int i = 0; i < strlen(s); i++)
+      for (int i = 0; i < (int)strlen(s); i++)
       { // handle_char
          if (s[i] == '\n')
          { // handle_new_record
@@ -119,8 +119,9 @@ void init_default_handler()
       win_handler_init = true;
       if (!f_exists(craft_data(".windefaults.params")))
       {
-         fprintf(stderr, "craft: cannot find data files in '%s'\n"
-                         "       (set CRAFT_DATADIR to the directory holding hcraft/ and buttons/)\n",
+         fprintf(stderr,
+                 "craft: cannot find data files in '%s'\n"
+                 "       (set CRAFT_DATADIR to the directory holding hcraft/ and buttons/)\n",
                  craft_datadir());
          exit(1);
       }
@@ -431,7 +432,7 @@ win::win(const char title[], const char host[], int x, int y, int dx, int dy, bo
                open_y = y;
             }
             else
-            {  // set_to_external_position
+            { // set_to_external_position
                /* myhint->flags |= USPosition; */
                myhint->x = 400;
                myhint->y = 400;
@@ -588,7 +589,7 @@ win::win(win *parent, const char title[], char host[], int x, int y, int dx, int
                open_y = y;
             }
             else
-            {  // set_to_external_position
+            { // set_to_external_position
                /* myhint->flags |= USPosition; */
                myhint->x = 400;
                myhint->y = 400;
@@ -686,7 +687,7 @@ Window win::grab(Display *dsp, Window wnd, char name[])
    if (!XQueryTree(dsp, wnd, &dummy, &dummy, &children, &nchildren))
       return (0);
 
-   for (i = 0; i < nchildren; i++)
+   for (i = 0; i < (int)nchildren; i++)
    {
       w = grab(dsp, children[i], name);
       if (w)
@@ -724,7 +725,6 @@ win::~win()
 
 void win::alloc_color(const char name[], int no)
 {
-   Screen *src = ScreenOfDisplay(mydisplay, myscreen);
    XColor c;
    XColor d;
 
@@ -898,9 +898,8 @@ void win::tick(bool pause)
             press_cnt++;
             { // decode_input
                KeySym mykey;
-               int d;
 
-               d = XLookupString((XKeyEvent *)&myevent, instring, 10, &mykey, 0);
+               XLookupString((XKeyEvent *)&myevent, instring, 10, &mykey, 0);
                act_key = ((XButtonPressedEvent *)&myevent)->button;
                if (XKeysymToString(mykey))
                   strcpy(cntlbuffer[keycount], XKeysymToString(mykey));
@@ -1052,7 +1051,6 @@ bool win::mouse(int &x, int &y, int &button)
 
 bool win::mouse(int &x, int &y, int &xe, int &ye, int &button)
 {
-   bool flag;
 
    if (is_enable)
    { // handle_mouse
@@ -1106,8 +1104,6 @@ bool win::is_mouse(int &xe, int &ye, int &button)
 
 void win::set_cursor(char name[])
 {
-   unsigned int xhot;
-   unsigned int yhot;
    int xh;
    int yh;
    Pixmap cur;
@@ -1123,8 +1119,6 @@ void win::set_cursor(char name[])
       sprintf(mask_name, "%s.mask", name);
       XReadBitmapFile(mydisplay, mywindow, cur_name, &dx, &dy, &cur, &xh, &yh);
       XReadBitmapFile(mydisplay, mywindow, mask_name, &dx, &dy, &mask, &xh, &yh);
-      xhot = xh;
-      yhot = yh;
    }
    /*  XDefineCursor (mydisplay, mywindow, new_cursor);
 */
@@ -1159,7 +1153,7 @@ void win::set_background(int color)
    XSetBackground(mydisplay, mygc, c);
 }
 
-void win::win_rgb(int color, int &r, int &g, int b)
+void win::win_rgb(int color, int &r, int &g, int &b)
 {
    if (color == white)
    {
@@ -1183,12 +1177,12 @@ void win::win_rgb(int color, int &r, int &g, int b)
 
 int win::win_color(int r, int g, int b)
 {
-   if ((r == last_r && g == last_g && b == last_b))
+   if (r == last_r && g == last_g && b == last_b)
       return last_best_color;
    else
    { // search_best_color
       double best_dist;
-      int best_color;
+      int best_color = 0;
 
       { // init
          best_dist = DBL_MAX;
@@ -1405,9 +1399,7 @@ void win::show_map(int x, int y, Pixmap m, int dx, int dy)
 void win::show_map(int x, int y, int src_x, int src_y, Pixmap m, int dx, int dy)
 {
    if (is_enable)
-   { // perform_show
-      unsigned int dxx = dx;
-      unsigned int dyy = dy;
+   {    // perform_show
       { // show_pixmap
          XCopyArea(mydisplay, m, mywindow, mygc, src_x, src_y, dx, dy, x, y);
       }
@@ -1866,15 +1858,15 @@ void win::get_color(XImage *i, int x, int y, int &r, int &g, int &b)
    else
    { // grab_new_rgb
       XQueryColor(mydisplay, cmap, &cc);
+      r = (int)cc.red >> 8;
+      g = (int)cc.green >> 8;
+      b = (int)cc.blue >> 8;
       is_last_pixel = true;
       last_pixel = cc.pixel;
       last_r = r;
       last_g = g;
       last_b = b;
    }
-   r = (int)cc.red >> 8;
-   g = (int)cc.green >> 8;
-   b = (int)cc.blue >> 8;
 }
 
 void win::set_pixel(XImage *i, int x, int y, int color)

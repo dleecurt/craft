@@ -458,7 +458,6 @@ void morph_edit::handle_cursor(win *w, int wno, bool &on_flag, int &button, char
    { // handle_move
       int mx;
       int my;
-      int d;
 
       w->mouse(mx, my, button);
       mx = px(wno, mx);
@@ -482,7 +481,6 @@ void morph_edit::handle_cursor(win *w, int wno, bool &on_flag, int &button, char
    { // handle_enter
       int mx;
       int my;
-      int d;
 
       on_flag = true;
       w->mouse(mx, my, button);
@@ -494,7 +492,7 @@ void morph_edit::handle_cursor(win *w, int wno, bool &on_flag, int &button, char
    }
 }
 
-void morph_edit::invert_cursor(win *w) {}
+void morph_edit::invert_cursor(win * /* w */) {}
 
 /*
   {w->function  (GXxor);
@@ -548,7 +546,7 @@ void morph_edit::delete_point(int pno)
       for (int i = 0; i < num_triangles; i++)
          if (!t_free[i])
          { // check_triangle
-            if ((t[i][0] == pno || t[i][1] == pno || t[i][2] == pno))
+            if (t[i][0] == pno || t[i][1] == pno || t[i][2] == pno)
                delete_triangle(i);
          }
    }

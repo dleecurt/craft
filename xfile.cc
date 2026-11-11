@@ -137,7 +137,7 @@ char *f_path(const char full_path[])
    static char r[1024];
    int p = 0;
 
-   for (int i = 0; i < strlen(full_path); i++)
+   for (int i = 0; i < (int)strlen(full_path); i++)
    {
       if (full_path[i] == '/')
          p = i;

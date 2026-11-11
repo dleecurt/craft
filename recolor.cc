@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "win.h"
 #include "cmap.h"
 #include "masks.h"
@@ -7,8 +8,14 @@
 #include "land.h"
 #include "cmap_edit.h"
 
-main(int num_params, char *shell_params[])
+int main(int num_params, char *shell_params[])
 {
+   if (num_params < 4)
+   {
+      printf("usage: craft-recolor NAME LIST COLOR\n       make player-colour versions of the "
+             "pictures listed in LIST\n");
+      return 1;
+   }
    FILE *f;
 
    { // open_f

@@ -9,6 +9,7 @@
 /*======================================================================*/
 
 #include "xfile.h"
+#include "errorhandling.h"
 #include "compress.h"
 
 #define indicator_raw 0
@@ -23,9 +24,9 @@ compress::~compress() {}
 
 char *compress::frame_name(const char postfix[])
 {
-   static char r[128];
+   static char r[256];
 
-   sprintf(r, "%s%04d.%s", name, snr, postfix);
+   snprintf(r, sizeof(r), "%s%04d.%s", name, snr, postfix);
    return r;
 }
 
@@ -38,21 +39,21 @@ void compress::encode(char fname[])
       printf("start encoding %s\n", name);
    }
    { // open_f
-      char f_name[128];
+      char f_name[160];
 
-      sprintf(f_name, "%s.hz", name);
+      snprintf(f_name, sizeof(f_name), "%s.hz", name);
       f = fopen(f_name, "w");
    }
    {    // init_encode
       { // convert_frame
-         char cmd[256];
+         char cmd[600];
          char n1[128];
          char n2[128];
 
          strcpy(n1, frame_name("pcx"));
          strcpy(n2, frame_name("ppm"));
-         sprintf(cmd, "pcxtoppm %s > %s", n1, n2);
-         system(cmd);
+         snprintf(cmd, sizeof(cmd), "pcxtoppm %s > %s", n1, n2);
+         run_command(cmd);
       }
       printf("       %s\n", frame_name(""));
       act = new ppm(frame_name("ppm"));
@@ -75,10 +76,8 @@ void compress::encode(char fname[])
             }
       }
       { // delete_ppm
-         char cmd[256];
 
-         sprintf(cmd, "rm %s", frame_name("ppm"));
-         system(cmd);
+         remove_file(frame_name("ppm"));
       }
    }
    { // next_frame
@@ -92,14 +91,14 @@ void compress::encode(char fname[])
          { // get_frame
             printf("       %s\n", frame_name(""));
             { // convert_frame
-               char cmd[256];
+               char cmd[600];
                char n1[128];
                char n2[128];
 
                strcpy(n1, frame_name("pcx"));
                strcpy(n2, frame_name("ppm"));
-               sprintf(cmd, "pcxtoppm %s > %s", n1, n2);
-               system(cmd);
+               snprintf(cmd, sizeof(cmd), "pcxtoppm %s > %s", n1, n2);
+               run_command(cmd);
             }
             frame = new ppm(frame_name("ppm"));
          }
@@ -281,10 +280,8 @@ void compress::encode(char fname[])
             }
          }
          { // delete_ppm
-            char cmd[256];
 
-            sprintf(cmd, "rm %s", frame_name("ppm"));
-            system(cmd);
+            remove_file(frame_name("ppm"));
          }
          delete (frame);
       }
@@ -314,9 +311,9 @@ void compress::decode(char fname[])
       printf("start decoding %s\n", name);
    }
    { // open_f
-      char f_name[128];
+      char f_name[160];
 
-      sprintf(f_name, "%s.hz", name);
+      snprintf(f_name, sizeof(f_name), "%s.hz", name);
       f_open(f, f_name, "r");
    }
    { // init_decode
@@ -340,16 +337,15 @@ void compress::decode(char fname[])
             printf("       %s\n", frame_name("pcx"));
             act->save(frame_name("ppm"));
             { // convert_to_pcx
-               char cmd[256];
+               char cmd[600];
                char n1[128];
                char n2[128];
 
                strcpy(n1, frame_name("ppm"));
                strcpy(n2, frame_name("pcx"));
-               sprintf(cmd, "ppmtopcx %s > %s", n1, n2);
-               system(cmd);
-               sprintf(cmd, "rm %s", n1);
-               system(cmd);
+               snprintf(cmd, sizeof(cmd), "ppmtopcx %s > %s", n1, n2);
+               run_command(cmd);
+               remove_file(n1);
             }
             byte_cnt = 0;
             snr++;
@@ -384,16 +380,15 @@ void compress::decode(char fname[])
       printf("       %s\n", frame_name("pcx"));
       act->save(frame_name("ppm"));
       { // convert_to_pcx
-         char cmd[256];
+         char cmd[600];
          char n1[128];
          char n2[128];
 
          strcpy(n1, frame_name("ppm"));
          strcpy(n2, frame_name("pcx"));
-         sprintf(cmd, "ppmtopcx %s > %s", n1, n2);
-         system(cmd);
-         sprintf(cmd, "rm %s", n1);
-         system(cmd);
+         snprintf(cmd, sizeof(cmd), "ppmtopcx %s > %s", n1, n2);
+         run_command(cmd);
+         remove_file(n1);
       }
       byte_cnt = 0;
       snr++;

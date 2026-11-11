@@ -17,7 +17,6 @@
 /*======================================================================*/
  
 #ifndef menu_h
-#pragma interface
 #define menu_h
 
 #include "stdio.h"

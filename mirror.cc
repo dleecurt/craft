@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "cmap_edit.h"
 #include "win.h"
 #include "cmap.h"
@@ -89,8 +90,14 @@ char host[max_players][128];
 char name[max_players][128];
 double speed[max_players];
 
-main(int num_params, char *shell_params[])
+int main(int num_params, char *shell_params[])
 {
+   if (num_params < 4)
+   {
+      printf("usage: craft-mirror NAME FROM TO\n       make the turned/mirrored direction frames "
+             "of NAME.FROM..NAME.TO\n");
+      return 1;
+   }
    for (int i = atoi(shell_params[2]); i <= atoi(shell_params[3]); i++)
    {    // mirror_pic
       { // mirror_d

@@ -1,5 +1,6 @@
 
 #include "land.h"
+#include "errorhandling.h"
 #include "craft_def.h"
 #include "craft.h"
 #include "xfile.h"
@@ -94,7 +95,7 @@ void load_units(char name[])
       f_open(f, complete(name, ".units"), "r");
    }
    { // get_size
-      fscanf(f, "%d", &num_units);
+      read_check(fscanf(f, "%d", &num_units), 1, "land file");
    }
    { // read_units
       for (int i = 0; i < num_units; i++)
@@ -105,7 +106,7 @@ void load_units(char name[])
          int color;
          int money;
 
-         fscanf(f, "%d %d %d %d %d", &type, &x, &y, &color, &money);
+         read_check(fscanf(f, "%d %d %d %d %d", &type, &x, &y, &color, &money), 5, "land file");
          if (type == object_mine)
          {
             objects->create_building(x, y, type, money, 0, none);
@@ -131,14 +132,14 @@ void load_land(char name[])
    { // get_size
       int d;
 
-      fscanf(f, "%d %d %d", &d, &landscape_dx, &landscape_dy);
+      read_check(fscanf(f, "%d %d %d", &d, &landscape_dx, &landscape_dy), 3, "land file");
    }
    { // read_landscape
       for (int y = 0; y < landscape_dy; y++)
          for (int x = 0; x < landscape_dx; x++)
          {
-            fscanf(f, "%d", &landscape[x][y]);
-            fscanf(f1, "%d", &landhight[x][y]);
+            read_check(fscanf(f, "%d", &landscape[x][y]), 1, "land file");
+            read_check(fscanf(f1, "%d", &landhight[x][y]), 1, "land file");
          }
    }
    fclose(f);
@@ -160,7 +161,7 @@ void load_land(char name[])
 
 void heap(int xx, int yy, int h, bool up)
 {
-   if ((0 <= xx && xx < landscape_dx && 0 <= yy && yy < landscape_dy))
+   if (0 <= xx && xx < landscape_dx && 0 <= yy && yy < landscape_dy)
    { // perform_heap
       int x;
       int y;
@@ -521,7 +522,7 @@ void rnd_land()
       { // set_trade_point
          int x;
          int y;
-         int tp;
+         int tp = 0;
 
          { // get_tp
             if (num_t_wood > 0 && num_t_gold > 0)
@@ -579,7 +580,7 @@ void rnd_land()
       { // set_trade_point
          int x;
          int y;
-         int tp;
+         int tp = 0;
 
          { // get_tp
             if (num_t_wood > 0 && num_t_gold > 0)
@@ -682,7 +683,6 @@ void island(int i, int x, int y, int &size, int length)
       c0 = 0;
    }
    { // gen_root
-      int dx = 1;
 
       for (int l = 0; l < length; l++)
       {
@@ -697,10 +697,10 @@ void island(int i, int x, int y, int &size, int length)
          c1++;
       }
    }
-   while ((c1 > c0))
+   while (c1 > c0)
    {
       { // heap_a_bit
-         if ((0 <= cx[c0] && cx[c0] < landscape_dx && 0 <= cy[c0] && cy[c0] < landscape_dy))
+         if (0 <= cx[c0] && cx[c0] < landscape_dx && 0 <= cy[c0] && cy[c0] < landscape_dy)
          { // handle_cand
             if (landscape[cx[c0]][cy[c0]] == land_sea)
             {
@@ -825,7 +825,6 @@ void prop_il_id()
 
 void rnd_water_land()
 {
-   int l;
 
    { // rnd_size
       landscape_dx = i_random((int)((double)min_rland_dx * 1.0), (int)((double)max_rland_dx * 1.0));
@@ -847,7 +846,6 @@ void rnd_water_land()
             ilid[x][y] = -1;
          }
       init_land_units();
-      l = 0;
    }
    { // set_islands
       num_il = i_random(i_max(num_players, 3), 6);
@@ -866,7 +864,6 @@ void rnd_water_land()
             }
          }
          ss[i] = i_random(50, 200);
-         l += ss[i];
          island(i, x_il[i], y_il[i], ss[i], ll);
       }
    }
@@ -1124,7 +1121,7 @@ void rnd_water_land()
       { // set_trade_point
          int x;
          int y;
-         int tp;
+         int tp = 0;
          int h;
          int s;
 
@@ -1194,7 +1191,7 @@ void rnd_water_land()
       { // set_trade_point
          int x;
          int y;
-         int tp;
+         int tp = 0;
          int h;
          int s;
 
@@ -1436,7 +1433,6 @@ void save_land(char name[])
       f_open(f2, complete(name, ".units"), "w");
    }
    { // write_size
-      int d;
 
       fprintf(f, "%d %d %d\n", 1, landscape_dx, landscape_dy);
    }
@@ -1507,11 +1503,13 @@ void load_land_props()
          { // load_info
             char d[128];
 
-            fscanf(infos, "%d %d %d %d %d %d %d %d %127s", &land_properties[lno].overview_color,
-                   &land_properties[lno].walk_possible, &land_properties[lno].with_hl,
-                   &land_properties[lno].is_forest, &land_properties[lno].is_grass,
-                   &land_properties[lno].is_dig, &land_properties[lno].is_water,
-                   &land_properties[lno].can_grow, d);
+            read_check(fscanf(infos, "%d %d %d %d %d %d %d %d %127s",
+                              &land_properties[lno].overview_color,
+                              &land_properties[lno].walk_possible, &land_properties[lno].with_hl,
+                              &land_properties[lno].is_forest, &land_properties[lno].is_grass,
+                              &land_properties[lno].is_dig, &land_properties[lno].is_water,
+                              &land_properties[lno].can_grow, d),
+                       9, "land info file");
          }
       }
       fclose(infos);
@@ -1520,7 +1518,7 @@ void load_land_props()
 
 void land_push(int id, int x, int y)
 {
-   if ((0 <= x && x < landscape_dx && 0 <= y && y < landscape_dy))
+   if (0 <= x && x < landscape_dx && 0 <= y && y < landscape_dy)
    { // perform_push
       int j;
 
@@ -1538,7 +1536,7 @@ void land_push(int id, int x, int y)
 
 void land_pop(int id, int x, int y)
 {
-   if ((0 <= x && x < landscape_dx && 0 <= y && y < landscape_dy))
+   if (0 <= x && x < landscape_dx && 0 <= y && y < landscape_dy)
    { // perform_pop
       for (int j = 0; j < 8; j++)
          if (upic[x][y][j] == id)

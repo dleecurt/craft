@@ -30,8 +30,8 @@ xbm::xbm(char name[])
    { // get_size
       char d[128];
 
-      fscanf(xbm_data, "%127s %127s %d", d, d, &dx);
-      fscanf(xbm_data, "%127s %127s %d", d, d, &dy);
+      read_check(fscanf(xbm_data, "%127s %127s %d", d, d, &dx), 3, "XBM bitmap");
+      read_check(fscanf(xbm_data, "%127s %127s %d", d, d, &dy), 3, "XBM bitmap");
       { // skip_line
          while (fgetc(xbm_data) != '\n')
          {
@@ -47,19 +47,18 @@ xbm::xbm(char name[])
       data = new int[dx * dy];
    }
    { // read_pixels
-      int b;
+      int b = 0;
 
       for (int y = 0; y < dy; y++)
          for (int x = 0; x < dx; x++)
          {    // read_pixel
             { // perhaps_get_b
-               char c;
 
                if (x % 8 == 0)
                { // get_new_b
                   char bb[128];
 
-                  fscanf(xbm_data, "%127s", bb);
+                  read_check(fscanf(xbm_data, "%127s", bb), 1, "XBM bitmap");
                   b = hextoint(substring(bb, 2));
                }
             }

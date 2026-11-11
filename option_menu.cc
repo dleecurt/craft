@@ -177,7 +177,7 @@ bool any_flag_request()
       return false;
 }
 
-void main_menu(int act_menu, int &tic)
+void main_menu(int /* act_menu */, int &tic)
 {
    dial *d_is_self;
    dial *d_is_suny;
@@ -235,7 +235,7 @@ void main_menu(int act_menu, int &tic)
             strcat(strlist, "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
             strcat(strlist, " ,.;_-=+!@#$%^&*()[]{}<>");
             tic = 0;
-            for (int i = 0; i < strlen(seed_s); i++)
+            for (int i = 0; i < (int)strlen(seed_s); i++)
             {
                tic += strpos(strlist, seed_s[i]) % 123124;
             }
@@ -296,7 +296,7 @@ void player_menu(int act_menu, int &tic)
    }
 }
 
-void details_menu(int act_menu, double &g_speed, int &tic)
+void details_menu(int /* act_menu */, double &g_speed, int &tic)
 {
    dial *d_min_land_dx;
    dial *d_min_land_dy;
@@ -391,10 +391,9 @@ void details_menu(int act_menu, double &g_speed, int &tic)
    }
 }
 
-void robo_menu(int act_menu, int &tic)
+void robo_menu(int /* act_menu */, int &tic)
 {
    scroller *s_robo_power;
-   scroller *s_robo_agress;
 
    {    // init
       { // show_pic
@@ -433,7 +432,7 @@ void robo_menu(int act_menu, int &tic)
    }
 }
 
-void inactive_menu(int act_menu, int &tic)
+void inactive_menu(int /* act_menu */, int &tic)
 {
    { // init
       if (!is_p[m_inactive])

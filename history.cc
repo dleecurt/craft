@@ -21,11 +21,11 @@ history::~history()
 
 void history::load()
 {
-   char f_name[128];
+   char f_name[160];
 
    num_entries = 0;
    { // calc_f_name
-      sprintf(f_name, "%s.hist", name);
+      snprintf(f_name, sizeof(f_name), "%s.hist", name);
    }
    if (f_exists(f_name))
    { // perform_load
@@ -48,9 +48,9 @@ void history::save()
    FILE *f;
 
    { // open_f
-      char f_name[128];
+      char f_name[160];
 
-      sprintf(f_name, "%s.hist", name);
+      snprintf(f_name, sizeof(f_name), "%s.hist", name);
       f = fopen(f_name, "w");
    }
    { // save_records
@@ -60,7 +60,7 @@ void history::save()
    fclose(f);
 }
 
-void history::push(char s[]) {}
+void history::push(char /* s */[]) {}
 
 char *history::top()
 {
@@ -83,13 +83,13 @@ char *history::select(int x, int y, int dx, int dy)
    char case_string[max_selector_cases][128];
 
    { // open_sel
-      char f_name[128];
+      char f_name[160];
 
       { // fill_cases
          for (int i = 0; i < num_entries; i++)
             strcpy(case_string[i], entry[i]);
       }
-      sprintf(f_name, "%s.hist", name);
+      snprintf(f_name, sizeof(f_name), "%s.hist", name);
       w = new win(f_name, "", x, y, dx, dy);
       sel = new selector(f_name, w, num_entries, case_string, 0, 0, dx - 16, dy);
    }

@@ -5,7 +5,6 @@
 
 int docks_dir(int x0, int y0)
 {
-   int dir;
    bool ok;
    int xs;
    int ys;
@@ -112,7 +111,7 @@ int docks_dir(int x0, int y0)
    return 0;
 }
 
-int docks_pic(int dir, int dx, int dy, int state)
+int docks_pic(int dir, int dx, int dy, int /* state */)
 {
    switch (dir)
    {
@@ -129,9 +128,10 @@ int docks_pic(int dir, int dx, int dy, int state)
       return pic_docks + dy * 3 + dx + 20;
       break;
    }
+   return pic_docks + dy * 3 + dx; // other directions do not occur
 }
 
-int docks_ship_pic(int dir, int dx, int dy, int state)
+int docks_ship_pic(int dir, int dx, int dy, int /* state */)
 {
    switch (dir)
    {
@@ -148,9 +148,10 @@ int docks_ship_pic(int dir, int dx, int dy, int state)
       return xpic_ship_on_dock + dy * 3 + dx + 20;
       break;
    }
+   return xpic_ship_on_dock + dy * 3 + dx; // other directions do not occur
 }
 
-int docks_site_pic(int dir, int dx, int dy, int state)
+int docks_site_pic(int dir, int dx, int dy, int /* state */)
 {
    switch (dir)
    {
@@ -167,11 +168,12 @@ int docks_site_pic(int dir, int dx, int dy, int state)
       return pic_docks_built + dy * 3 + dx + 20;
       break;
    }
+   return pic_docks_built + dy * 3 + dx; // other directions do not occur
 }
 
-int building_pic(int type, int dx, int dy, int state)
+int building_pic(int type, int dx, int dy, int /* state */)
 {
-   int base_pic;
+   int base_pic = 0;
 
    { // get_base_pic
       switch (type)

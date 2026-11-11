@@ -19,18 +19,20 @@ bool ok()
 
 double d_get(char msg[])
 {
-   float d;
+   float d = 0;
 
    printf("%s", msg);
-   scanf("%f", &d);
+   if (scanf("%f", &d) != 1)
+      d = 0;
    return (double)d;
 }
 
 int i_get(char msg[])
 {
-   int i;
+   int i = 0;
 
    printf("%s", msg);
-   scanf("%d", &i);
+   if (scanf("%d", &i) != 1)
+      i = 0;
    return i;
 }

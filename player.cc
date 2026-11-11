@@ -72,6 +72,9 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
       num_marked_ships[2] = 0;
       num_marked_ships[3] = 0;
       num_marked_ships[4] = 0;
+      for (int g = 0; g < 5; g++)
+         for (int m = 0; m < max_marked; m++)
+            marked[g][m] = none;
       any_kill = false;
       cmd_refresh_forced = false;
       bonus = 1;
@@ -144,7 +147,6 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
          write("Your order ?");
       }
       { // open_w_admin
-         char f_name[256];
          w_land->set_clip(0, 0, 1000, 1000);
          w_land->set_color(gray80);
          w_land->fill(0, 720, 800, 800);
@@ -425,11 +427,10 @@ void player::show(int lx0, int ly0, int lx, int ly, bool extra_mark)
 {
    if (!is_robot && (0 <= lx && lx < landscape_dx && 0 <= ly && ly < landscape_dy))
    { // perform_show
-      if ((!is_suny || sun_cnt[lx][ly] > 0))
+      if (!is_suny || sun_cnt[lx][ly] > 0)
       { // show_field
          int wx = (lx - x0) * pic_dx;
          int wy = (ly - y0) * pic_dy;
-         int uu = unit[lx][ly];
 
          { // show_land
             int l = landpic[lx][ly];
@@ -466,7 +467,7 @@ void player::show(int lx0, int ly0, int lx, int ly, bool extra_mark)
                      pics[1]->show((objects->wx[u] - x0 * pic_dx), (objects->wy[u] - y0 * pic_dy),
                                    wx, wy);
                   }
-                  if ((objects->type[u] == object_msg && !objects->is_free[u]))
+                  if (objects->type[u] == object_msg && !objects->is_free[u])
                   { // show_msg
                      int wwx = (objects->x[u] - x0) * pic_dx;
                      int wwy = (objects->y[u] - y0) * pic_dy;
@@ -501,7 +502,7 @@ void player::show(int lx0, int ly0, int lx, int ly, bool extra_mark)
                            pics[land_bush]->show((objects->wx[u] - x0 * pic_dx),
                                                  (objects->wy[u] - y0 * pic_dy), wx, wy);
                         }
-                        else if ((p < 1 && uu != none && objects->type[uu] == object_ship1))
+                        else if (p < 1 && uu != none && objects->type[uu] == object_ship1)
                         { // show_ship_pic
                            int x_source = wx - (objects->wx[u] - x0 * pic_dx);
                            int y_source = wy - (objects->wy[u] - y0 * pic_dy);
@@ -893,7 +894,7 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
 
          if (running_cmd == none && w_land->is_mouse(xe, ye, b))
          { // handle_mark_event
-            if ((b == button1press))
+            if (b == button1press)
             { // try_to_mark_new
                int mx;
                int my;
@@ -970,7 +971,7 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
                   };
                }
             }
-            else if ((b == button2press))
+            else if (b == button2press)
             { // try_to_add_mark
                int mx;
                int my;
@@ -1089,7 +1090,7 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
                   };
                }
             }
-            else if ((b == button3press))
+            else if (b == button3press)
             { // center_screen
                int nx;
                int ny;
@@ -1104,7 +1105,7 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
                }
                nx = i_bound(0, mx - (wdx / pic_dx) / 2, (landscape_dx - (wdx / pic_dx)));
                ny = i_bound(0, my - (wdy / pic_dy) / 2, (landscape_dy - (wdy / pic_dy)));
-               if ((nx != x0 || ny != y0))
+               if (nx != x0 || ny != y0)
                { // perform_overview_move
                   show_overview_frame(false);
                   x0 = nx;
@@ -1995,7 +1996,7 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
 
             if (w_land->is_mouse(xe, ye, b))
             { // check_store_or_abort
-               if ((b == button1press))
+               if (b == button1press)
                { // store_cmd_params
                   int mx;
                   int my;
@@ -2127,7 +2128,7 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
                      };
                   }
                }
-               else if ((b == button3press))
+               else if (b == button3press)
                { // cancel_cmd
                   if (cmd_active[running_cmd])
                      cmds[running_cmd]->press(false);
@@ -2203,7 +2204,7 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
                          (landscape_dx - (wdx / pic_dx)));
             ny = i_bound(0, (yy / olandscale) - (wdy / pic_dy) / 2,
                          (landscape_dy - (wdy / pic_dy)));
-            if ((nx != x0 || ny != y0))
+            if (nx != x0 || ny != y0)
             { // perform_overview_move
                show_overview_frame(false);
                x0 = nx;
@@ -2476,7 +2477,7 @@ void player::focus(int xx, int yy)
 
    nx = i_bound(0, xx - (wdx / pic_dx) / 2, (landscape_dx - (wdx / pic_dx)));
    ny = i_bound(0, yy - (wdy / pic_dy) / 2, (landscape_dy - (wdy / pic_dy)));
-   if ((nx != x0 || ny != y0))
+   if (nx != x0 || ny != y0)
    { // perform_overview_move
       show_overview_frame(false);
       x0 = nx;
@@ -2523,7 +2524,7 @@ void player::show_percent(int x, int y, int dx, int dy, int p, const char title[
    }
 }
 
-void player::clear_percent(int x, int y, int dx, int dy)
+void player::clear_percent(int /* x */, int y, int /* dx */, int dy)
 {
    if (!is_robot)
    { // perform_show
@@ -2751,212 +2752,9 @@ void player::show_status(int id, bool is_first_time)
    { // perform_show
       if (id == none)
       { // handle_multi_status
-         if (is_first_time)
-         { // show_commands
-            switch (objects->type[id])
-            {
-            case object_worker:
-            { // show_worker_cmds
-               bool any_built_cmd;
-
-               { // check_built_cmd
-                  any_built_cmd
-                      = ((objects->cmd[id][2] == cmd_harvest || objects->cmd[id][1] == cmd_harvest
-                          || objects->cmd[id][0] == cmd_harvest)
-                         && objects->harvest_type[id] == harvest_built);
-               }
-               if (any_built_cmd)
-               { // push_worker_built
-                  push_cmd("Interrupt", cmd_idle, 'i', 0, 0);
-                  push_cmd("  built  ", cmd_idle, ' ', 0, 0);
-               }
-               else
-               { // push_worker_none_built
-                  push_cmd("Move       ", cmd_move_to, 'm', 0, 0);
-                  push_cmd("Concentrate", cmd_move_to, 'c', 0, 0);
-                  push_cmd("Dig        ", cmd_dig, 'd', price_dig, wood_dig);
-                  push_cmd("Heap       ", cmd_heap, 'h', price_heap, wood_heap);
-                  push_cmd("diG to     ", cmd_dig_row, 'g', price_dig, wood_dig);
-                  push_cmd("heaP to    ", cmd_heap_row, 'p', price_heap, wood_heap);
-                  push_cmd("trAp       ", cmd_dig_trap, 'a', price_trap, wood_trap);
-                  push_cmd("haRvest    ", cmd_harvest, 'r', 0, 0);
-                  if (num_town_halls < 1)
-                     push_cmd("T-hall     ", cmd_built_home, 't', price_home, wood_home);
-                  else
-                  { // pawn_built_more
-                     if ((num_town_halls < 2 && town_hall_in_progress == 0)
-                         || (is_water_world && num_town_halls < 4))
-                        push_cmd("T-hall     ", cmd_built_home, 't', price_home, wood_home);
-                     push_cmd("Knight Camp", cmd_built_camp, 'k', price_camp, wood_camp);
-                     push_cmd("Farm       ", cmd_built_farm, 'f', price_farm, wood_farm);
-                     if (num_markets < 1 && market_in_progress == 0)
-                        push_cmd("markEt     ", cmd_built_market, 'e', price_market, wood_market);
-                     push_cmd("fort (q)   ", cmd_built_tents, 'q', price_tents, wood_tents);
-                     push_cmd("miLl       ", cmd_built_mill, 'l', price_mill, wood_mill);
-                     push_cmd("Smith      ", cmd_built_smith, 's', price_smith, wood_smith);
-                     push_cmd("docks (;)  ", cmd_built_docks, ';', price_docks, wood_docks);
-                     push_cmd("Uni        ", cmd_built_uni, 'u', price_uni, wood_uni);
-                  }
-                  if (num_markets > 0)
-                     push_cmd("merchaNt   ", cmd_upgrade, 'n', price_trader, wood_trader);
-                  push_cmd("Talk (/)   ", cmd_talk, '/', 0, 0);
-                  push_cmd("Idle       ", cmd_idle, 'i', 0, 0);
-               }
-            };
-            break;
-            case object_home:
-            { // show_home_cmds
-               push_cmd("Worker", cmd_train_worker, 'w', price_worker, 0);
-               push_cmd("Pawn  ", cmd_train_pawn, 'p', price_pawn, wood_pawn);
-               push_cmd("Idle  ", cmd_idle, 'i', 0, 0);
-            };
-            break;
-            case object_market:
-            { // show_market_cmds
-               push_cmd("Idle    ", cmd_idle, 'i', 0, 0);
-            };
-            break;
-            case object_tents:
-            { // show_tents_cmds
-               push_cmd("Idle    ", cmd_idle, 'i', 0, 0);
-            };
-            break;
-            case object_camp:
-            { // show_camp_cmds
-               push_cmd("Knight", cmd_train_knight, 'k', price_knight, wood_knight);
-               push_cmd("Idle  ", cmd_idle, 'i', 0, 0);
-            };
-            break;
-            case object_mill:
-            { // show_mill_cmds
-               push_cmd("Archer", cmd_train_archer, 'a', price_archer, wood_archer);
-               push_cmd("Idle  ", cmd_idle, 'i', 0, 0);
-            };
-            break;
-            case object_uni:
-            { // show_uni_cmds
-               push_cmd("Scientist", cmd_train_doktor, 's', price_doktor, wood_doktor);
-               push_cmd("Idle     ", cmd_idle, 'i', 0, 0);
-            };
-            break;
-            case object_smith:
-            { // show_smith_cmds
-               push_cmd("Catapult", cmd_train_cata, 'c', price_cata, wood_cata);
-               push_cmd("Idle    ", cmd_idle, 'i', 0, 0);
-            };
-            break;
-            case object_docks:
-            { // show_docks_cmds
-               push_cmd("Ship  ", cmd_built_ship, 's', price_ship1, wood_ship1);
-               /*
-      push_cmd ("Battle", cmd_built_bship, 'b', price_ship2, wood_ship2);
-*/
-               push_cmd("Idle  ", cmd_idle, 'i', 0, 0);
-            };
-            break;
-            case object_knight:
-            { // show_knight_cmds
-               push_cmd("Move       ", cmd_move_to, 'm', 0, 0);
-               push_cmd("Concentrate", cmd_move_to, 'c', 0, 0);
-               push_cmd("Attack     ", cmd_attack, 'a', 0, 0);
-               push_cmd("S & d      ", cmd_sad, 's', 0, 0);
-               push_cmd("F & d      ", cmd_fad, 'f', 0, 0);
-               push_cmd("guarD      ", cmd_guard, 'd', 0, 0);
-               push_cmd("Talk (/)   ", cmd_talk, '/', 0, 0);
-               push_cmd("Idle       ", cmd_idle, 'i', 0, 0);
-            };
-            break;
-            case object_trader:
-            { // show_trader_cmds
-               push_cmd("Move       ", cmd_move_to, 'm', 0, 0);
-               push_cmd("Concentrate", cmd_move_to, 'c', 0, 0);
-               push_cmd("trade J    ", cmd_trade, 'j', 0, 0);
-               push_cmd("Talk (/)   ", cmd_talk, '/', 0, 0);
-               push_cmd("Idle       ", cmd_idle, 'i', 0, 0);
-            };
-            break;
-            case object_pawn:
-            { // show_pawn_cmds
-               push_cmd("Move       ", cmd_move_to, 'm', 0, 0);
-               push_cmd("Concentrate", cmd_move_to, 'c', 0, 0);
-               push_cmd("Attack     ", cmd_attack, 'a', 0, 0);
-               push_cmd("S & d      ", cmd_sad, 's', 0, 0);
-               push_cmd("F & d      ", cmd_fad, 'f', 0, 0);
-               push_cmd("guarD      ", cmd_guard, 'd', 0, 0);
-               if (num_tents > 0)
-                  push_cmd("scOut      ", cmd_upgrade, 'o', price_scout, wood_scout);
-               push_cmd("Talk (/)   ", cmd_talk, '/', 0, 0);
-               push_cmd("Idle       ", cmd_idle, 'i', 0, 0);
-            };
-            break;
-            case object_scout:
-            { // show_scout_cmds
-               push_cmd("Move       ", cmd_move_to, 'm', 0, 0);
-               push_cmd("Concentrate", cmd_move_to, 'c', 0, 0);
-               push_cmd("Hide (A)   ", cmd_hide, 'a', 0, 0);
-               push_cmd("Talk (/)   ", cmd_talk, '/', 0, 0);
-               push_cmd("Idle       ", cmd_idle, 'i', 0, 0);
-            };
-            break;
-            case object_ship1:
-            { // show_ship_cmds
-               w_status->set_color(30);
-               w_status->fill(10, 130, 170, 70);
-               w_status->set_color(black);
-               w_status->write(120, 160, "Ship");
-
-               w_status->set_color(29);
-               w_status->fill(10, 200, 170, 120);
-               w_status->set_color(black);
-               w_status->write(120, 230, "Crew");
-
-               push_cmd("Ship to    ", cmd_sail, 's', 0, 0);
-               push_cmd("Idle       ", cmd_idle, 'i', 0, 0);
-
-               push_cmd("Talk (/)   ", cmd_talk, '/', 0, 0);
-               push_cmd("Concentrate", cmd_concentrate, 'c', 0, 0);
-               push_cmd("Attack     ", cmd_attack, 'a', 0, 0);
-               push_cmd("Enter      ", cmd_enter, 'e', 0, 0);
-               push_cmd("Idle       ", cmd_idle, 'i', 0, 0);
-            };
-            break;
-            case object_archer:
-            { // show_archer_cmds
-               push_cmd("Move       ", cmd_move_to, 'm', 0, 0);
-               push_cmd("Concentrate", cmd_move_to, 'c', 0, 0);
-               push_cmd("Attack     ", cmd_attack, 'a', 0, 0);
-               push_cmd("S & d      ", cmd_sad, 's', 0, 0);
-               push_cmd("F & d      ", cmd_fad, 'f', 0, 0);
-               push_cmd("guarD      ", cmd_guard, 'd', 0, 0);
-               push_cmd("Talk (/)   ", cmd_talk, '/', 0, 0);
-               push_cmd("Idle       ", cmd_idle, 'i', 0, 0);
-            };
-            break;
-            case object_doktor:
-            { // show_doktor_cmds
-               push_cmd("Move       ", cmd_move_to, 'm', 0, 0);
-               push_cmd("Concentrate", cmd_move_to, 'c', 0, 0);
-               push_cmd("casT       ", cmd_heal, 't', 0, 0);
-               push_cmd("cAst all   ", cmd_sad, 'a', 0, 0);
-               push_cmd("guarD      ", cmd_guard, 'd', 0, 0);
-               push_cmd("Talk (/)   ", cmd_talk, '/', 0, 0);
-               push_cmd("Idle       ", cmd_idle, 'i', 0, 0);
-            };
-            break;
-            case object_cata:
-            { // show_archer_cmds
-               push_cmd("Move       ", cmd_move_to, 'm', 0, 0);
-               push_cmd("Concentrate", cmd_move_to, 'c', 0, 0);
-               push_cmd("Attack     ", cmd_attack, 'a', 0, 0);
-               push_cmd("S & d      ", cmd_sad, 's', 0, 0);
-               push_cmd("F & d      ", cmd_fad, 'f', 0, 0);
-               push_cmd("guarD      ", cmd_guard, 'd', 0, 0);
-               push_cmd("Talk (/)   ", cmd_talk, '/', 0, 0);
-               push_cmd("Idle       ", cmd_idle, 'i', 0, 0);
-            };
-            break;
-            }
-         }
+         /* Several units are selected: there is no single unit type to show
+            commands for (the original code switched on objects->type[-1]).
+            The common commands are shown by adjust_cmds(). */
       }
       else
       {    // handle_single_status
@@ -3640,7 +3438,7 @@ void player::inform(char msg[])
    }
 }
 
-void player::write(const char msg[]) {}
+void player::write(const char /* msg */[]) {}
 
 /*
 void player::write (char msg [])
@@ -4071,7 +3869,7 @@ void player::edit()
                   }
                   nx = i_bound(0, (xx / 2) - (wdx / pic_dx) / 2, (landscape_dx - (wdx / pic_dx)));
                   ny = i_bound(0, (yy / 2) - (wdy / pic_dy) / 2, (landscape_dy - (wdy / pic_dy)));
-                  if ((nx != x0 || ny != y0))
+                  if (nx != x0 || ny != y0)
                   { // perform_overview_move
                      show_overview_frame(false);
                      x0 = nx;

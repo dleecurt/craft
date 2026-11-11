@@ -92,9 +92,9 @@ char host[max_players][128];
 char name[max_players][128];
 double speed[max_players];
 
-main(int num_params, char *shell_params[])
+int main(int num_params, char *shell_params[])
 {
-   if (num_params < 2)
+   if (num_params < 8)
    { // usage
       printf("\nsplit <orig><dest><from><to><incr><dx><dy>\n");
       exit(0);

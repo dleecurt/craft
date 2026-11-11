@@ -74,6 +74,9 @@ numbered series `NAME.N.cmap`.
 | `craft-medit` | `craft-medit REGIONS ORIG DEST` | morph editor: define matching points and triangles |
 | `craft-morph` | `craft-morph ORIG DEST BACKGROUND REGIONS STEPS` | render a morph between two pictures |
 
+`craft-compress` and `craft-morph` call the netpbm programs `pcxtoppm`,
+`ppmtopcx` and `ppmquant` (`sudo apt install netpbm`).
+
 ## Source layout
 
 - `*.cc`, `*.h`: the game and its window/picture library. `craft.cc` is

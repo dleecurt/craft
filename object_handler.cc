@@ -1,3 +1,12 @@
+/*
+ * Changed from the CRAFT 3.5 Standard Version (craftcc35.tar.Z),
+ * as clause 3 of its license requires (see LICENSE):
+ *   2018-2019  Quipyowert2/craft: fixes for modern compilers
+ *   2026       dleecurt/craft: converted from object_handler.hc (hcc refinements
+ *              expanded) to plain C++; compiler, warning and bug fixes
+ * Exact changes: git log -- object_handler.cc object_handler.hc
+ */
+
 #include "dir.h"
 #include "object_handler.h"
 #include "craft.h"

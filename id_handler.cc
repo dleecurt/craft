@@ -1,3 +1,11 @@
+/*
+ * Changed from the CRAFT 3.5 Standard Version (craftcc35.tar.Z),
+ * as clause 3 of its license requires (see LICENSE):
+ *   2026       dleecurt/craft: converted from id_handler.hc (hcc refinements
+ *              expanded) to plain C++
+ * Exact changes: git log -- id_handler.cc id_handler.hc
+ */
+
 /*======================================================================*/
 /*= CHANGES AND UPDATES                                                =*/
 /*======================================================================*/

@@ -108,7 +108,7 @@ install-data-local:
 uninstall-local:
 	rm -rf "$(DESTDIR)$(pkgdatadir)" "$(DESTDIR)$(docdir)/html"
 
-dist_doc_DATA = README.md LICENSE-NOTES.md
+dist_doc_DATA = README.md LICENSE LICENSE-NOTES.md
 
 dist_man_MANS = craft.6
 

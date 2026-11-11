@@ -1,3 +1,11 @@
+/*
+ * Changed from the CRAFT 3.5 Standard Version (craftcc35.tar.Z),
+ * as clause 3 of its license requires (see LICENSE):
+ *   2026       dleecurt/craft: converted from morph.hc (hcc refinements
+ *              expanded) to plain C++; compiler, warning and bug fixes
+ * Exact changes: git log -- morph.cc morph.hc
+ */
+
 #include "morph.h"
 #include "errorhandling.h"
 #include "win.h"

@@ -1,9 +1,18 @@
+/*
+ * Changed from the CRAFT 3.5 Standard Version (craftcc35.tar.Z),
+ * as clause 3 of its license requires (see LICENSE):
+ *   2026       dleecurt/craft: converted from xtimer.hc (hcc refinements
+ *              expanded) to plain C++; compiler, warning and bug fixes
+ * Exact changes: git log -- xtimer.cc xtimer.hc
+ */
+
 
 #include "xtimer.h"
 
 #include "unistd.h"
+#include <errno.h>
+#include <time.h>
 #include "sys/time.h"
-#include "signal.h"
 
 /*----------------------------------------------------------------------*/
 /* CLASS xtimer (funktions)                                              */
@@ -44,23 +53,19 @@ double xtimer::read()
    return dt;
 }
 
-void sig(int /* signo */)
-{
-   signal(SIGALRM, sig);
-}
-
+/* Sleep for dt milliseconds.
+   The original converted dt with tv_usec = dt * 10, so a 50 ms wait
+   became 0.5 ms. On 1990s hardware a game cycle took about 50 ms anyway,
+   which hid the bug; on modern CPUs the game ran up to ~80x too fast. */
 void delay(int dt)
 {
-   itimerval tick;
+   struct timespec ts;
 
-   tick.it_value.tv_sec = dt / 10000;
-   tick.it_interval.tv_sec = 0;
-   tick.it_value.tv_usec = dt * 10;
-   tick.it_interval.tv_usec = 600000;
-
-   signal(SIGALRM, sig);
-   if (setitimer(ITIMER_REAL, &tick, 0) == 0)
+   if (dt <= 0)
+      return;
+   ts.tv_sec = dt / 1000;
+   ts.tv_nsec = (long)(dt % 1000) * 1000000L;
+   while (nanosleep(&ts, &ts) != 0 && errno == EINTR)
    {
-      pause();
    }
 }

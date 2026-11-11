@@ -55,6 +55,35 @@ this order:
 2. the current directory, if it contains the data (a source checkout)
 3. the install location, `PREFIX/share/craft`
 
+If game windows don't redraw after another window covers them, your X
+server has *backing store* turned off: Craft asks X to keep window
+contents for it (the original author noted this). With Xorg it can usually be
+enabled with `Option "BackingStore" "true"` in the `Device` section of
+`xorg.conf`, or by running a compositing
+window manager.
+
+## Playing
+
+The start menu sets up the world (with or without a king, local sight,
+islands, and a seed to repeat a landscape) and the four players. Each
+player button cycles between **Human**, **Computer** and inactive
+(`- - -`); since version 3.5 more than one computer player can take part.
+The full rules are in [`doc/craft.html`](doc/craft.html).
+
+New in 3.5, from the author's release notes:
+
+- several computer players in one game;
+- timer-driven scheduling, which uses less CPU and shares time more
+  fairly between players;
+- more plausible battles between ships;
+- **talking**: type a message into the small text bar at the bottom left
+  of the control panel, then give one of your units the *talk* command
+  to show it. It only appears if nothing is in the way at the unit's
+  upper right.
+
+The author also noted that version 3.5 fixed many bugs from 3.05,
+including several segmentation faults.
+
 ## Art tools
 
 The original developers' tools for making the game's pictures. They work
@@ -105,7 +134,31 @@ called `hcc`. It has been expanded once into ordinary C++. Comments like
 More: [libregamewiki](https://libregamewiki.org/CRAFT:_The_Vicious_Vikings),
 [SourceForge](https://sourceforge.net/projects/craft-vikings/).
 
+## Differences from the Standard Version
+
+This fork is a modified version of CRAFT 3.5 (`craftcc35.tar.Z`). Every
+changed file starts with a notice saying how and when it changed, and
+the full history is in git. In summary:
+
+- the source is plain C++ instead of `.hc` files for the `hcc`
+  preprocessor; the `hcc` tool and the `install` script are gone
+- it builds with Autoconf/Automake and installs with `make install`;
+  data is found through `CRAFT_DATADIR` or the install location instead
+  of only the current directory
+- fixes for current compilers, all compiler warnings, and a number of
+  bugs (crashes, uninitialised data, buffer overflows); see the git log
+- the art tools are installed as `craft-cmedit`, `craft-mirror` and so
+  on, so they don't clash with standard programs such as `split`
+- test programs, unused modules, editor backups and two third-party
+  images were removed; the original web pages are in `doc/`
+
+The unmodified Standard Version is the first import in this
+repository's history (commit `593e4f6`), originally from
+`ibiblio.org/pub/linux/games/strategy/craftcc35.tar.Z`.
+
 ## License
 
-Different sources state different licenses. See
-[`LICENSE-NOTES.md`](LICENSE-NOTES.md).
+CRAFT is under the **Artistic License** (version 1.0), as stated by its
+author on the 3.5 source page. See [`LICENSE`](LICENSE), and
+[`LICENSE-NOTES.md`](LICENSE-NOTES.md) for the evidence and the older,
+conflicting statements.

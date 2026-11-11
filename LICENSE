@@ -1,0 +1,36 @@
+CRAFT: The Vicious Vikings
+Copyright (C) Uwe Beyer, GMD (uwe.beyer@gmd.de)
+
+CRAFT is distributed under the Artistic License (the original version,
+as published with Perl), with the ten numbered clauses stated by the
+author on the "Source Code of CRAFT" page for version 3.5:
+
+  http://borneo.gmd.de/AS/janus/craft/craftcc35.html
+  archived: https://web.archive.org/web/20030324085855/http://borneo.gmd.de/AS/janus/craft/craftcc35.html
+
+The same license text is published by the Open Source Initiative as the
+"Artistic License 1.0":
+
+  https://opensource.org/license/artistic-1-0
+
+In short (this summary is not the license; the full text governs):
+
+- You may copy and give away the unmodified source freely, keeping the
+  copyright notices and disclaimers.
+- You may modify it if every changed file carries a prominent notice of
+  how and when it was changed, and the changes are made freely
+  available (or one of the other options in clause 3 is met).
+- Binaries you distribute must come with the source or with
+  instructions for getting it, or give modified programs names that do
+  not clash with the standard ones (clause 4).
+- You may charge a reasonable copying fee, but not a fee for the
+  package itself (clause 5).
+- The author's name may not be used to promote derived works without
+  permission (clause 9).
+- There is no warranty (clause 10).
+
+This fork (https://github.com/dleecurt/craft) meets clause 3 with a
+change notice at the top of every modified file, by publishing all
+changes in a public repository, and by listing the differences from the
+Standard Version in README.md. See LICENSE-NOTES.md for the history of
+the license statements.

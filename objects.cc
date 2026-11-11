@@ -1,3 +1,11 @@
+/*
+ * Changed from the CRAFT 3.5 Standard Version (craftcc35.tar.Z),
+ * as clause 3 of its license requires (see LICENSE):
+ *   2026       dleecurt/craft: converted from objects.hc (hcc refinements
+ *              expanded) to plain C++; compiler, warning and bug fixes
+ * Exact changes: git log -- objects.cc objects.hc
+ */
+
 #include "objects.h"
 #include "io.h"
 #include "math.h"

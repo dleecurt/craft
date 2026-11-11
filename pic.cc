@@ -1,3 +1,11 @@
+/*
+ * Changed from the CRAFT 3.5 Standard Version (craftcc35.tar.Z),
+ * as clause 3 of its license requires (see LICENSE):
+ *   2026       dleecurt/craft: converted from pic.hc (hcc refinements
+ *              expanded) to plain C++
+ * Exact changes: git log -- pic.cc pic.hc
+ */
+
 #include "craft_def.h"
 #include "win.h"
 

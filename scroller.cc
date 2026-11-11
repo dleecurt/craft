@@ -1,3 +1,12 @@
+/*
+ * Changed from the CRAFT 3.5 Standard Version (craftcc35.tar.Z),
+ * as clause 3 of its license requires (see LICENSE):
+ *   2018-2019  Quipyowert2/craft: fixes for modern compilers
+ *   2026       dleecurt/craft: converted from scroller.hc (hcc refinements
+ *              expanded) to plain C++
+ * Exact changes: git log -- scroller.cc scroller.hc
+ */
+
 #include "scroller.h"
 #include "masks.h"
 

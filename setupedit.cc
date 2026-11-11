@@ -30,15 +30,15 @@ edit_setup::edit_setup(char host[], int initial_money)
             cmap *m[5];
             char s[128];
 
-            sprintf(s, "hcraft/pic.%d", xpic_pawn_idle);
+            sprintf(s, "%s/pic.%d", craft_data("hcraft"), xpic_pawn_idle);
             m[0] = new cmap(w, s);
-            sprintf(s, "hcraft/pic.%d", xpic_knight_idle);
+            sprintf(s, "%s/pic.%d", craft_data("hcraft"), xpic_knight_idle);
             m[1] = new cmap(w, s);
-            sprintf(s, "hcraft/pic.%d", xpic_archer_idle);
+            sprintf(s, "%s/pic.%d", craft_data("hcraft"), xpic_archer_idle);
             m[2] = new cmap(w, s);
-            sprintf(s, "hcraft/pic.%d", xpic_cata_idle);
+            sprintf(s, "%s/pic.%d", craft_data("hcraft"), xpic_cata_idle);
             m[3] = new cmap(w, s);
-            sprintf(s, "hcraft/pic.%d", xpic_doktor_idle);
+            sprintf(s, "%s/pic.%d", craft_data("hcraft"), xpic_doktor_idle);
             m[4] = new cmap(w, s);
             m[0]->show(80, 50 - 20);
             m[1]->show(80, 100 - 20);

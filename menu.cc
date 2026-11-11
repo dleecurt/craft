@@ -11,6 +11,7 @@
 /*======================================================================*/
 
 #include "menu.h"
+#include "datadir.h"
 
 /*----------------------------------------------------------------------*/
 /* CLASS menu (static initializations)                                  */
@@ -100,7 +101,7 @@ menu::menu(const char w_name[], int w_x, int w_y, const char w_cmds[], int w_mod
          if (w_cmds[0] == '$')
             strcpy(button_dir, "");
          else
-            sprintf(button_dir, "%s/", win_default_s("button_dir"));
+            snprintf(button_dir, sizeof(button_dir), "%s/", craft_data(win_default_s("button_dir")));
       }
       { // scan_buttons
          int p = 0;

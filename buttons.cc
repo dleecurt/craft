@@ -9,6 +9,7 @@
 /*======================================================================*/
 
 #include "buttons.h"
+#include "datadir.h"
 #include "win.h"
 
 button::button(win *b_w, const char b_label[], int b_x, int b_y, bool b_with_repeat, int b_dx,
@@ -30,7 +31,7 @@ button::button(win *b_w, const char b_label[], int b_x, int b_y, bool b_with_rep
       label_color = win_default_c(b_label_color, "button_foreground");
       with_repeat = b_with_repeat;
       is_pressed = false;
-      strcpy(button_dir, win_default_s("button_dir"));
+      snprintf(button_dir, sizeof(button_dir), "%s", craft_data(win_default_s("button_dir")));
    }
    { // calc_font
       if (b_label_font == NULL)

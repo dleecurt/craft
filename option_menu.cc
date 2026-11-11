@@ -58,7 +58,7 @@ void show_flags()
          { // load_p
             char name[128];
 
-            sprintf(name, "hcraft/men%d", m_no);
+            sprintf(name, "%s/men%d", craft_data("hcraft"), m_no);
             p[m_no] = new cmap(w, name);
             is_p[m_no] = true;
          }
@@ -191,7 +191,7 @@ void main_menu(int act_menu, int &tic)
          { // load_p
             w->set_cursor(150);
             w->tick();
-            p[m_main] = new cmap(w, "hcraft/m1");
+            p[m_main] = new cmap(w, craft_data("hcraft/m1"));
             is_p[m_main] = true;
             w->set_cursor(2);
             w->tick();
@@ -261,7 +261,7 @@ void player_menu(int act_menu, int &tic)
          { // load_p
             w->set_cursor(150);
             w->tick();
-            p[m_player] = new cmap(w, "hcraft/m4");
+            p[m_player] = new cmap(w, craft_data("hcraft/m4"));
             is_p[m_player] = true;
             w->set_cursor(2);
             w->tick();
@@ -310,7 +310,7 @@ void details_menu(int act_menu, double &g_speed, int &tic)
          { // load_p
             w->set_cursor(150);
             w->tick();
-            p[m_details] = new cmap(w, "hcraft/m2");
+            p[m_details] = new cmap(w, craft_data("hcraft/m2"));
             is_p[m_details] = true;
             w->set_cursor(2);
             w->tick();
@@ -402,7 +402,7 @@ void robo_menu(int act_menu, int &tic)
          { // load_p
             w->set_cursor(150);
             w->tick();
-            p[m_robot] = new cmap(w, "hcraft/m3");
+            p[m_robot] = new cmap(w, craft_data("hcraft/m3"));
             is_p[m_robot] = true;
             w->set_cursor(2);
             w->tick();
@@ -440,7 +440,7 @@ void inactive_menu(int act_menu, int &tic)
       { // load_p
          w->set_cursor(150);
          w->tick();
-         p[m_inactive] = new cmap(w, "hcraft/m5");
+         p[m_inactive] = new cmap(w, craft_data("hcraft/m5"));
          is_p[m_inactive] = true;
          w->set_cursor(2);
          w->tick();

@@ -68,7 +68,7 @@ paramreader::paramreader(const char param_file_name[])
 
    num_params = 0;
    { // open_param_file
-      char file_name[128];
+      char file_name[1024];
 
       strcpy(file_name, param_file_name);
       strcat(file_name, ".params");

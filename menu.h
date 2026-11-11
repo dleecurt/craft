@@ -63,7 +63,7 @@ class menu
      win  *w;
 
      int  group;
-     char button_dir [128];
+     char button_dir [1024];
      char name       [128];
      char cmds       [max_buttons][128];
      int  tdx        [max_buttons];

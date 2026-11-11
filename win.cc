@@ -10,6 +10,7 @@
 /*======================================================================*/
 
 #include "stdlib.h"
+#include "datadir.h"
 
 #include "win.h"
 #include "xfile.h"
@@ -116,9 +117,14 @@ void init_default_handler()
    if (!win_handler_init)
    { // perform_init
       win_handler_init = true;
-      if (!f_exists(".windefaults.params"))
-         system("cp /home/hua/craft/.windefaults.params .");
-      win_defaults = new paramreader(".windefaults");
+      if (!f_exists(craft_data(".windefaults.params")))
+      {
+         fprintf(stderr, "craft: cannot find data files in '%s'\n"
+                         "       (set CRAFT_DATADIR to the directory holding hcraft/ and buttons/)\n",
+                 craft_datadir());
+         exit(1);
+      }
+      win_defaults = new paramreader(craft_data(".windefaults"));
    }
 }
 
@@ -372,7 +378,11 @@ win::win(const char title[], const char host[], int x, int y, int dx, int dy, bo
          strcat(full_title, title);
          { // set_host
             if (strcmp(host, "") == 0)
-               strcpy(full_host, getenv("DISPLAY"));
+            {
+               const char *env_display = getenv("DISPLAY");
+
+               snprintf(full_host, sizeof(full_host), "%s", env_display != NULL ? env_display : "");
+            }
             else
                sprintf(full_host, "%s:0.0", host);
          }
@@ -383,6 +393,12 @@ win::win(const char title[], const char host[], int x, int y, int dx, int dy, bo
                       | LeaveWindowMask;
 
          mydisplay = XOpenDisplay(full_host);
+         if (mydisplay == NULL)
+         {
+            fprintf(stderr, "craft: cannot open X display '%s'%s\n", XDisplayName(full_host),
+                    full_host[0] == 0 ? " (is DISPLAY set?)" : "");
+            exit(1);
+         }
          myscreen = DefaultScreen(mydisplay);
          mybackground = WhitePixel(mydisplay, myscreen);
          myforeground = BlackPixel(mydisplay, myscreen);
@@ -526,7 +542,11 @@ win::win(win *parent, const char title[], char host[], int x, int y, int dx, int
          strcat(full_title, title);
          { // set_host
             if (strcmp(host, "") == 0)
-               strcpy(full_host, getenv("DISPLAY"));
+            {
+               const char *env_display = getenv("DISPLAY");
+
+               snprintf(full_host, sizeof(full_host), "%s", env_display != NULL ? env_display : "");
+            }
             else
                sprintf(full_host, "%s:0.0", host);
          }

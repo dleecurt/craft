@@ -1,5 +1,6 @@
 #include "stdio.h"
 #include "limits.h"
+#include <sys/stat.h>
 
 #include "xfile.h"
 #include "xstring.h"
@@ -114,7 +115,11 @@ char *f_getline (FILE *f, char record [], int max_length)
   }
 
 time_t f_date (char file_name [])
-  {
+  {struct stat st;
+
+   if   (stat (file_name, &st) == 0)
+        return st.st_mtime;
+   else return 0;
   }
 /*
   {stat status;

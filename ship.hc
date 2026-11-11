@@ -92,7 +92,10 @@ void ship::refresh (int i)
 
 bool ship::enter (int id)
   {if (num_man < capa)
-      perform_enter;
+      {perform_enter;
+       return true;
+      };
+   return false;
 
 .  perform_enter
      {int x;

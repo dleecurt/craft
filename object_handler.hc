@@ -3553,6 +3553,7 @@ int object_handler::create_ship_zombi (int id)
    age       [id]    = 0;
    oid       [id]    = 0;
    refresh (x [id], y [id], 1, 1, 4, 4);
+   return id;
   }
 
 
@@ -3607,6 +3608,7 @@ int object_handler::create_zombi (int id)
    if   (on_water)
         create_swim (id);
    else normal_zombi;
+   return id;
 
 .  remove_from_ship
      {int ss = on_ship [id];
@@ -3778,6 +3780,7 @@ int object_handler::create_schrott (int id)
    if   (on_water)
         create_swim (id);
    else normal_zombi;
+   return id;
 
 .  remove_from_ship
      {int ss = on_ship [id];
@@ -3923,6 +3926,7 @@ int object_handler::create_building_zombi (int id)
    set_to_field;
    version [id]++;
    any_building_event = true;
+   return id;
 
 .  set_to_field
      {int bdx;
@@ -4009,6 +4013,7 @@ int object_handler::create_swim (int id)
   {if   (is_building (type [id]))
         remove_building
    else start_swim;
+   return id;
 
 .  start_swim
      {handle_support;

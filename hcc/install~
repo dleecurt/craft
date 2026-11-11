@@ -1,5 +1,0 @@
-#
-gcc -o hhh hcc.cc
-hhh -compiler h
-
-

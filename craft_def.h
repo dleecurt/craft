@@ -2,6 +2,7 @@
 #define craft_def_h
 
 #include "bool.h"
+#include "datadir.h"
 
 #define max_land_dx 400
 #define max_land_dy 400
@@ -17,9 +18,9 @@
 #define max_land_types      5000
 #define max_pics_per_player 6000
 
-#define pic_cata_name "hcraft/pic_cata_new"
-#define pic_names     "hcraft/pic"
-#define info_name     "hcraft/infos"
+#define pic_cata_name craft_data ("hcraft/pic_cata_new")
+#define pic_names     craft_data ("hcraft/pic")
+#define info_name     craft_data ("hcraft/infos")
 
 #define pic_dx             30
 #define pic_dy             30

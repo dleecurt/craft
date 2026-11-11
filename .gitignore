@@ -1,0 +1,36 @@
+# Autotools output
+/aclocal.m4
+/autom4te.cache/
+/build-aux/
+/config.log
+/config.status
+/configure
+/configure~
+/Makefile
+/Makefile.in
+/craft-*.tar.gz
+
+# Build output
+*.o
+*.a
+.deps/
+.dirstamp
+/craft
+/craft-cmedit
+/craft-compress
+/craft-medit
+/craft-morph
+/craft-mirror
+/craft-ppm2cmap
+/craft-recolor
+/craft-shade
+/craft-shade1
+/craft-split
+
+# Editor and art-tool scratch files
+*~
+\#*\#
+*.old
+.winfix
+filesel.temp
+*.hist

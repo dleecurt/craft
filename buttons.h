@@ -31,7 +31,7 @@ class button
      Pixmap background;
      win    *w;
      
-     char   button_dir [128];
+     char   button_dir [1024];
      char   label      [128];
      bool   is_icon;
      bool   with_repeat;

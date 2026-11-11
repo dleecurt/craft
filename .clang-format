@@ -1,0 +1,12 @@
+BasedOnStyle: GNU
+ColumnLimit: 100
+BreakBeforeBraces: Allman
+SpaceBeforeParens: ControlStatements
+IndentWidth: 3
+ReflowComments: false
+SortIncludes: false
+MaxEmptyLinesToKeep: 1
+AlwaysBreakAfterReturnType: None
+AlwaysBreakAfterDefinitionReturnType: None
+AllowShortFunctionsOnASingleLine: Empty
+AlignConsecutiveDeclarations: false

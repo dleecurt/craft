@@ -12,8 +12,8 @@ void compress   (char s []);
 void lower      (char s []);
 void changeall  (char s [], 
                  int  max_length_of_s,
-                 char tmpalte     [],
-                 char replacement []);
+                 const char tmpalte     [],
+                 const char replacement []);
 char *substring (const char s [], int from, int to);
 char *substring (char s [], int from); 
 int  submatch   (char s [], char p [], int &pos);

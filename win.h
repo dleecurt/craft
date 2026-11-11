@@ -135,7 +135,6 @@ void text_size (char s [], const char font [], int &dx, int &dy, int &num_of_lin
 /* Default Handler (deklarations)                                       */
 /*----------------------------------------------------------------------*/
 
-#define default_win_param_file_name "/home/hua/craft/.windefaults"
 
 extern bool        win_handler_init;
 extern paramreader *win_defaults;
@@ -269,7 +268,7 @@ class win
      void   set_cursor       (char name []);
      void   set_cursor       (int cursor);
      void   set_color        (int r, int g, int b);
-     void   win_rgb          (int color, int &r, int &g, int b);
+     void   win_rgb          (int color, int &r, int &g, int &b);
      int    win_color        (int r, int g, int b);
      void   set_color        (int color);
      void   set_background   (int color);

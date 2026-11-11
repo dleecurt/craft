@@ -1,0 +1,54 @@
+.TH CRAFT 6 "November 2026" "craft 3.5.1" "Games"
+.SH NAME
+craft \- CRAFT: The Vicious Vikings, a real-time strategy game for X11
+.SH SYNOPSIS
+.B craft
+.SH DESCRIPTION
+.B craft
+is a real-time strategy game in the style of Warcraft and Dune II.
+As a Viking king, you build up a settlement, feed up to 70 citizens,
+harvest gold and wood, trade, and train knights, archers, catapults and
+ships to conquer the computer players' islands.
+.PP
+A start menu lets you choose the world (with or without islands,
+local sight, a king unit, random seed), the human and computer players,
+and their settings.
+Press
+.B Play
+to start.
+.SH ENVIRONMENT
+.TP
+.B DISPLAY
+The X display to use.
+.TP
+.B CRAFT_DATADIR
+Directory that holds the game data
+.RI ( hcraft/ ,
+.IR buttons/ " and"
+.IR .windefaults.params ).
+If unset,
+.B craft
+uses the current directory when it holds the data, and otherwise the
+installed data directory.
+.SH FILES
+.TP
+.I PREFIX/share/craft/
+Installed pictures, button icons and window defaults.
+.TP
+.I PREFIX/share/doc/craft/html/craft.html
+The original game manual: units, buildings and orders.
+.SH SEE ALSO
+The art tools
+.BR craft\-cmedit ,
+.BR craft\-ppm2cmap ,
+.BR craft\-mirror ,
+.BR craft\-split ,
+.BR craft\-recolor ,
+.BR craft\-shade ,
+.BR craft\-medit ,
+.BR craft\-morph " and"
+.BR craft\-compress
+are described in README.md.
+.SH AUTHORS
+Uwe Beyer and team at GMD, 1990s.
+Modernised in the dleecurt/craft fork, https://github.com/dleecurt/craft.

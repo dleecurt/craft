@@ -16,6 +16,7 @@
 #include "buttons.h"
 #include "option_menu.h"
 #include "zoom.h"
+#include "sound.h"
 #include "getline.h"
 #include "win.h"
 #include "cmap.h"
@@ -157,6 +158,7 @@ bool any_flag_request()
       if (b == button1press)
       {
          act_menu = yb / flag_dy;
+         sfx_ui(sfx_click);
          { // perhaps_type_change
             if ((act_menu - 2) > 0
                 && (menu_type[act_menu] == m_player || menu_type[act_menu] == m_robot
@@ -359,6 +361,21 @@ void show_zoom()
    w->tick();
 }
 
+/* "music 70%" or "effects 80%" between its - and + buttons */
+#define vol_y 44
+static const int vol_label_x[2] = { 26, 156 };
+static const int vol_label_dx[2] = { 78, 98 };
+
+void show_volume(int channel)
+{
+   w->set_background(gray80);
+   w->set_color(gray80);
+   w->fill(vol_label_x[channel], vol_y, vol_label_dx[channel], 26);
+   w->set_color(black);
+   w->write(vol_label_x[channel] + 4, vol_y + 18, sound_label(channel));
+   w->tick();
+}
+
 void details_menu(int /* act_menu */, double &g_speed, int &tic)
 {
    dial *d_min_land_dx;
@@ -370,6 +387,8 @@ void details_menu(int /* act_menu */, double &g_speed, int &tic)
    button *b_pace_up;
    button *b_zoom_down;
    button *b_zoom_up;
+   button *b_vol_down[2];
+   button *b_vol_up[2];
 
    {    // init
       { // show_pic
@@ -400,6 +419,12 @@ void details_menu(int /* act_menu */, double &g_speed, int &tic)
          b_zoom_down = new button(w, " - ", 60, 14);
          b_zoom_up = new button(w, " + ", 236, 14);
          show_zoom();
+         for (int c = 0; c < 2; c++)
+         {
+            b_vol_down[c] = new button(w, "-", vol_label_x[c] - 22, vol_y);
+            b_vol_up[c] = new button(w, "+", vol_label_x[c] + vol_label_dx[c] + 2, vol_y);
+            show_volume(c);
+         }
       }
    }
    { // session
@@ -452,6 +477,19 @@ void details_menu(int /* act_menu */, double &g_speed, int &tic)
                win::rezoom_all(zoom_step(1));
                show_zoom();
             }
+            for (int c = 0; c < 2; c++)
+            {
+               if (b_vol_down[c]->eval())
+               {
+                  sound_step_volume(c, -1);
+                  show_volume(c);
+               }
+               if (b_vol_up[c]->eval())
+               {
+                  sound_step_volume(c, 1);
+                  show_volume(c);
+               }
+            }
             switch (act_speed)
             {
             case 1:
@@ -485,6 +523,11 @@ void details_menu(int /* act_menu */, double &g_speed, int &tic)
       delete (b_pace_up);
       delete (b_zoom_down);
       delete (b_zoom_up);
+      for (int c = 0; c < 2; c++)
+      {
+         delete (b_vol_down[c]);
+         delete (b_vol_up[c]);
+      }
    }
 }
 

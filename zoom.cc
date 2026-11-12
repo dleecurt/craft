@@ -6,10 +6,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <sys/stat.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrender.h>
 #include "zoom.h"
+#include "settings.h"
 
 /* The game screen at zoom 1, plus room for a title bar and a panel. */
 #define game_dx 1016
@@ -26,35 +26,6 @@ static double override_z = 0;
 static bool have_render = true;
 static double auto_z = 0;
 
-static const char *settings_file(bool create_dir)
-{
-   static char path[1100] = "";
-   char dir[1024];
-   const char *xdg = getenv("XDG_CONFIG_HOME");
-   const char *home = getenv("HOME");
-
-   if (xdg != NULL && xdg[0] == '/')
-      snprintf(dir, sizeof(dir), "%s/craft", xdg);
-   else
-      snprintf(dir, sizeof(dir), "%s/.config/craft", home != NULL ? home : ".");
-   if (create_dir)
-   {
-      char p[1024];
-
-      snprintf(p, sizeof(p), "%s", dir);
-      for (char *s = p + 1; *s != 0; s++)
-         if (*s == '/')
-         {
-            *s = 0;
-            mkdir(p, 0755);
-            *s = '/';
-         }
-      mkdir(p, 0755);
-   }
-   snprintf(path, sizeof(path), "%s/settings", dir);
-   return path;
-}
-
 static bool valid_step(double z)
 {
    for (int i = 0; i < num_steps; i++)
@@ -65,45 +36,27 @@ static bool valid_step(double z)
 
 static void load()
 {
-   FILE *f;
-   char line[256];
+   const char *value;
 
    if (loaded)
       return;
    loaded = true;
-   f = fopen(settings_file(false), "r");
-   if (f == NULL)
-      return;
-   while (fgets(line, sizeof(line), f) != NULL)
-   {
-      char value[64];
-
-      if (sscanf(line, "zoom %63s", value) == 1)
-      {
-         if (strcmp(value, "auto") == 0)
-            setting = zoom_auto_setting;
-         else if (valid_step(atof(value)))
-            setting = atof(value);
-      }
-   }
-   fclose(f);
+   value = settings_get("zoom");
+   if (value == NULL || strcmp(value, "auto") == 0)
+      setting = zoom_auto_setting;
+   else if (valid_step(atof(value)))
+      setting = atof(value);
 }
 
 static void save()
 {
-   FILE *f = fopen(settings_file(true), "w");
+   char value[32];
 
-   if (f == NULL)
-   {
-      fprintf(stderr, "craft: cannot save settings to %s\n", settings_file(false));
-      return;
-   }
-   fprintf(f, "# Craft settings, written by the game\n");
    if (setting == zoom_auto_setting)
-      fprintf(f, "zoom auto\n");
+      snprintf(value, sizeof(value), "auto");
    else
-      fprintf(f, "zoom %g\n", setting);
-   fclose(f);
+      snprintf(value, sizeof(value), "%g", setting);
+   settings_set("zoom", value);
 }
 
 double zoom_auto()

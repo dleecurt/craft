@@ -9,6 +9,7 @@
 
 #include "dir.h"
 #include "object_handler.h"
+#include "sound.h"
 #include "craft.h"
 #include "player.h"
 #include "land.h"
@@ -461,6 +462,7 @@ void object_handler::exec_trap(int id)
 
          if (u != none)
          {
+            sfx_at(sfx_trap, x[id], y[id]);
             hit(id, u, power_trap);
             trapped[u] = true;
          }
@@ -705,6 +707,7 @@ void object_handler::exec_building_site(int id)
 
       delete_object(id);
       ii = create_building(xp, yp, type, 0, 0, col);
+      sfx_for(sfx_built, col);
       if (players[p]->is_robot)
          players[p]->rob->just_finished = ii;
       if (type == object_home)
@@ -778,7 +781,10 @@ void object_handler::exec_market(int id)
                      }
                }
                if (any_free_place)
+               {
                   create_trader(xx, yy, color[id], id);
+                  sfx_for(sfx_ready, color[id]);
+               }
             }
             power[id] = 0;
             support[id] = i_max(0, support[id] - 1);
@@ -845,7 +851,10 @@ void object_handler::exec_tents(int id)
                      }
                }
                if (any_free_place)
+               {
                   create_scout(xx, yy, color[id], id);
+                  sfx_for(sfx_ready, color[id]);
+               }
             }
             power[id] = 0;
             support[id] = i_max(0, support[id] - 1);
@@ -912,7 +921,10 @@ void object_handler::exec_camp(int id)
                      }
                }
                if (any_free_place)
+               {
                   create_knight(xx, yy, color[id], id);
+                  sfx_for(sfx_ready, color[id]);
+               }
             }
             power[id] = 0;
             support[id] = i_max(0, support[id] - 1);
@@ -988,7 +1000,10 @@ void object_handler::exec_mill(int id)
                      }
                }
                if (any_free_place)
+               {
                   create_archer(xx, yy, color[id], id);
+                  sfx_for(sfx_ready, color[id]);
+               }
             }
             power[id] = 0;
             support[id] = i_max(0, support[id] - 1);
@@ -1064,7 +1079,10 @@ void object_handler::exec_uni(int id)
                      }
                }
                if (any_free_place)
+               {
                   create_doktor(xx, yy, color[id], id);
+                  sfx_for(sfx_ready, color[id]);
+               }
             }
             power[id] = 0;
             support[id] = i_max(0, support[id] - 1);
@@ -1140,7 +1158,10 @@ void object_handler::exec_smith(int id)
                      }
                }
                if (any_free_place)
+               {
                   create_cata(xx, yy, color[id], id);
+                  sfx_for(sfx_ready, color[id]);
+               }
             }
             power[id] = 0;
             support[id] = i_max(0, support[id] - 1);
@@ -1235,6 +1256,8 @@ void object_handler::exec_docks(int id)
                   int p;
 
                   p = create_ship(xx, yy, color[id], dir[id], cmd[id][0] == cmd_built_bship);
+
+                  sfx_for(sfx_ready, color[id]);
                   home_id[p] = id;
                   power[id] = 0;
                }
@@ -1325,10 +1348,14 @@ void object_handler::exec_home(int id)
                if (any_free_place)
                { // exec_create
                   if (typ == object_worker)
+                  {
                      create_worker(xx, yy, color[id], id);
+                     sfx_for(sfx_ready, color[id]);
+                  }
                   else
                   { // create_a_pawn
                      int p = create_pawn(xx, yy, color[id]);
+                     sfx_for(sfx_ready, color[id]);
 
                      home_id[p] = id;
                   }
@@ -1376,10 +1403,14 @@ void object_handler::exec_home(int id)
                if (any_free_place)
                { // exec_create
                   if (typ == object_worker)
+                  {
                      create_worker(xx, yy, color[id], id);
+                     sfx_for(sfx_ready, color[id]);
+                  }
                   else
                   { // create_a_pawn
                      int p = create_pawn(xx, yy, color[id]);
+                     sfx_for(sfx_ready, color[id]);
 
                      home_id[p] = id;
                   }
@@ -1760,6 +1791,15 @@ void object_handler::worker_hack(int id)
       if (anything_to_harvest)
       { // continue_harvest
          t[id]--;
+         if (t[id] % 7 == 3)
+         { // work_sound: as the tool strikes
+            static const int work_sfx[]
+                = { sfx_chop, sfx_mine, sfx_dig, sfx_dig, sfx_build }; /* by harvest_ */
+            int k = harvest_type[id];
+
+            if (k >= 0 && k < (int)(sizeof(work_sfx) / sizeof(work_sfx[0])))
+               sfx_at(work_sfx[k], x[id], y[id]);
+         }
          set_move_pic(id, pic_worker_work(color[id]), t[id] % 7, gx[id][0] - x[id],
                       gy[id][0] - y[id]);
          refresh(x[id], y[id]);
@@ -3035,6 +3075,7 @@ void object_handler::exec_water(int id)
 
 int object_handler::create_ship_zombi(int id)
 {
+   sfx_at(sfx_collapse, x[id], y[id]);
    type[id] = object_ship_zombi;
    t[id] = 5;
    speed[id] = speed_ship_zombi;
@@ -3087,6 +3128,7 @@ void object_handler::exec_ship_zombi(int id)
 
 int object_handler::create_zombi(int id)
 {
+   sfx_at(sfx_death, x[id], y[id]);
    { // remove_from_ship
       int ss = on_ship[id];
 
@@ -3300,6 +3342,8 @@ int object_handler::create_explosion(int xp, int yp)
 {
    int id = create_object();
 
+   sfx_at(sfx_explosion, xp, yp);
+
    if (id != none)
    { // add_data
       type[id] = object_explosion;
@@ -3337,6 +3381,7 @@ void object_handler::exec_explosion(int id)
 
 int object_handler::create_building_zombi(int id)
 {
+   sfx_at(sfx_collapse, x[id], y[id]);
    if (type[id] != object_building_site && type[id] != object_site_docks)
       players[color_player[color[id]]]->sub_sun(x[id], y[id], vr[id]);
    destroy_building(id);
@@ -6075,6 +6120,7 @@ void object_handler::exec_doktor_hit(int id)
          { // try_heal
             if (health[u] < 100 && u != id)
             {
+               sfx_at(sfx_heal, x[u], y[u]);
                if (on_ship[id])
                   health[u] = i_min(100, health[u] + 20);
                else
@@ -6151,6 +6197,7 @@ int object_handler::create_arrow(int ax, int ay, int agx, int agy, int aid)
 {
    int id;
 
+   sfx_at(sfx_bow, ax, ay);
    id = create_object();
    if (id != none)
    {    // add_arrow_data
@@ -6264,6 +6311,7 @@ int object_handler::create_stone(int ax, int ay, int agx, int agy, int aid)
 {
    int id;
 
+   sfx_at(sfx_catapult, ax, ay);
    id = create_object();
    if (id != none)
    {    // add_stone_data
@@ -6634,6 +6682,9 @@ void object_handler::hit(int id, int e, int power)
 {
    int amour;
 
+   if (!is_free[e] && id >= 0 && color[id] != color[e])
+      sfx_for(sfx_alert, color[e]);
+
    if (!is_free[e] && type[e] == object_ship1)
       s[e]->hit(id, power);
    else if (!is_free[e])
@@ -6759,6 +6810,7 @@ void object_handler::exec_fighter_hit(int id)
             }
             if (dh > 0)
                power = (int)((double)power * 0.8);
+            sfx_at(sfx_sword, x[u], y[u]);
             hit(id, u, power);
             dir[id] = direction(x[u] - x[id], y[u] - y[id]);
             speed[id] = speed_hit;

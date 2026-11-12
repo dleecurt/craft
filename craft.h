@@ -68,6 +68,8 @@ extern char           p_name       [max_players][128];
 extern int            num_paused;
 
 extern int            ticker;
+extern int            game_pace;   /* game steps per second */
+int  step_game_pace (int direction); /* +1 faster, -1 slower; returns the new pace */
 extern int            rest_time;
 extern int            full_time;
 

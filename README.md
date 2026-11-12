@@ -104,6 +104,18 @@ was saved. Games with several human players can be saved too; restoring
 one reopens the windows on the same X displays. A save only loads in the
 same version of Craft that wrote it (the game says so if it doesn't).
 
+### Game pace
+
+The game runs at 40 steps per second by default, about as fast as the
+original ran on 1997 hardware. Change it in the start menu's **Details**
+page with the **-** and **+** buttons next to *pace*, or during play by
+pressing **+** (or **=**) and **-** with the mouse over the map. The
+current pace is shown above the **save** button. Choices: 10, 20, 30,
+40, 50, 60, 80 and 100 steps per second.
+
+(The **speed** slider on the Details page is different: it changes how
+many steps each unit needs per action.)
+
 ### Pausing
 
 To pause, press **pause** next to **quit** in the status panel (or the

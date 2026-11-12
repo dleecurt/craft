@@ -114,6 +114,7 @@ robot::robot(int my_color, int my_pno)
       y_forti = 0;
       urgent = -1;
       urgent_1 = -1;
+      ilf = NULL; /* was left uninitialised on land worlds */
       if (is_water_world)
          ilf = new ilfield();
    }

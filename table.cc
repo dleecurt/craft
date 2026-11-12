@@ -51,10 +51,7 @@ table::table(char t_dir[], char t_name[], bool &is_new, int t_lru_size)
       is_new = true;
       snprintf(f_name, sizeof(f_name), "%s%s", dir, name);
       if (f_exists(f_name))
-      {
-         load();
-         is_new = false;
-      }
+         is_new = !load();
    }
    { // message
    }
@@ -65,7 +62,7 @@ table::~table()
    if (was_write_access)
       save();
    if (data_size != 0)
-      delete (data);
+      delete[] (data);
    if (is_lru)
       delete (lru_queue);
 }
@@ -255,7 +252,7 @@ void table::save()
    }
 }
 
-void table::load()
+bool table::load()
 {
    FILE *f;
 
@@ -268,14 +265,15 @@ void table::load()
    { // load_dd
       int d;
 
-      read_check(
-          fscanf(f, "%d %d %d %d %d", &number_of_columns, &number_of_rows, &column_length, &d, &id),
-          5, "table file");
+      if (fscanf(f, "%d %d %d %d %d", &number_of_columns, &number_of_rows, &column_length, &d, &id)
+          != 5)
+         goto damaged;
       for (int i = 0; i < number_of_columns; i++)
       { // load_column
-         read_check(fscanf(f, "%127s %d %d %d\n", column_name[i], &column_type[i], &column_size[i],
-                           &column_index[i]),
-                    4, "table file");
+         if (fscanf(f, "%127s %d %d %d\n", column_name[i], &column_type[i], &column_size[i],
+                    &column_index[i])
+             != 4)
+            goto damaged;
       }
    }
    { // load_data
@@ -293,7 +291,8 @@ void table::load()
             { // read_int
                int k;
 
-               read_check(fscanf(f, "%d ", &k), 1, "table file");
+               if (fscanf(f, "%d ", &k) != 1)
+                  goto damaged;
                write(row_no, j, k);
             };
             break;
@@ -301,7 +300,8 @@ void table::load()
             { // read_float
                float k;
 
-               read_check(fscanf(f, "%f ", &k), 1, "table file");
+               if (fscanf(f, "%f ", &k) != 1)
+                  goto damaged;
                write(row_no, j, k);
             };
             break;
@@ -309,7 +309,8 @@ void table::load()
             { // read_text
                char t[128];
 
-               read_check(fscanf(f, "%127s ", t), 1, "table file");
+               if (fscanf(f, "%127s ", t) != 1)
+                  goto damaged;
                write(row_no, j, t);
             };
             break;
@@ -320,7 +321,8 @@ void table::load()
                float y;
                float z;
 
-               read_check(fscanf(f, "%f %f %f ", &x, &y, &z), 3, "table file");
+               if (fscanf(f, "%f %f %f ", &x, &y, &z) != 3)
+                  goto damaged;
                p.x = x;
                p.y = y;
                p.z = z;
@@ -342,9 +344,10 @@ void table::load()
                float p3y;
                float p3z;
 
-               read_check(fscanf(f, "%f %f %f %f %f %f %f %f %f %f %f %f ", &p0x, &p0y, &p0z, &p1x,
-                                 &p1y, &p1z, &p2x, &p2y, &p2z, &p3x, &p3y, &p3z),
-                          12, "table file");
+               if (fscanf(f, "%f %f %f %f %f %f %f %f %f %f %f %f ", &p0x, &p0y, &p0z, &p1x, &p1y,
+                          &p1z, &p2x, &p2y, &p2z, &p3x, &p3y, &p3z)
+                   != 12)
+                  goto damaged;
                write(row_no, j,
                      new_cube(new_point(p0x, p0y, p0z), new_point(p1x, p1y, p1z),
                               new_point(p2x, p2y, p2z), new_point(p3x, p3y, p3z)));
@@ -356,10 +359,12 @@ void table::load()
                float a;
                int size;
 
-               read_check(fscanf(f, "%d ", &size), 1, "table file");
+               if (fscanf(f, "%d ", &size) != 1)
+                  goto damaged;
                for (int g = 0; g < max_config_size; g++)
                {
-                  read_check(fscanf(f, "%f ", &a), 1, "table file");
+                  if (fscanf(f, "%f ", &a) != 1)
+                     goto damaged;
                   c.v[g] = a;
                }
                write(row_no, j, c);
@@ -371,7 +376,8 @@ void table::load()
                float a1;
                float a2;
 
-               read_check(fscanf(f, "%f %f %f ", &a0, &a1, &a2), 3, "table file");
+               if (fscanf(f, "%f %f %f ", &a0, &a1, &a2) != 3)
+                  goto damaged;
                write(row_no, j, new_vector(a0, a1, a2));
             };
             break;
@@ -387,9 +393,10 @@ void table::load()
                float p2y;
                float p2z;
 
-               read_check(fscanf(f, "%f %f %f %f %f %f %f %f %f ", &p0x, &p0y, &p0z, &p1x, &p1y,
-                                 &p1z, &p2x, &p2y, &p2z),
-                          9, "table file");
+               if (fscanf(f, "%f %f %f %f %f %f %f %f %f ", &p0x, &p0y, &p0z, &p1x, &p1y, &p1z,
+                          &p2x, &p2y, &p2z)
+                   != 9)
+                  goto damaged;
                write(row_no, j,
                      new_plane(new_point(p0x, p0y, p0z), new_point(p1x, p1y, p1z),
                                new_point(p2x, p2y, p2z)));
@@ -410,6 +417,20 @@ void table::load()
    { // close_load_file
       fclose(f);
    }
+   return true;
+
+damaged:
+   /* A damaged table file (e.g. a half-written window-position cache):
+      forget what was read so the caller starts a fresh table. */
+   fclose(f);
+   fprintf(stderr, "craft: ignoring damaged file %s%s\n", dir, name);
+   if (data_size != 0)
+      delete[] (data);
+   data_size = 0;
+   number_of_rows = 0;
+   number_of_columns = 0;
+   column_length = 0;
+   return false;
 }
 
 void table::rename(char new_name[])
@@ -568,7 +589,7 @@ int table::add_row()
          memcpy(new_mem, data, data_size);
       data_size += (column_length * rows_per_grab);
       if (must_delete)
-         delete (data);
+         delete[] (data);
       data = new_mem;
    }
    was_write_access = true;

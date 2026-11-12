@@ -20,14 +20,16 @@
 #define caption_dy 75
 #define poll_ms 50
 
-/* Wait until the window gets a mouse click or a key press, or until
-   max_seconds have passed. */
+/* Wait until the window gets a full mouse click (press and release) or a
+   key press, or until max_seconds have passed. Waiting for the release
+   matters: closing on the press would let the release fall through to
+   the window underneath, where it blocks that window's buttons. */
 static void wait_for_dismiss(win *w, int max_seconds)
 {
    long start = x_sys_time();
+   bool pressed = false;
 
    w->tick();
-   w->mark_mouse();
    while (x_sys_time() - start < (long)max_seconds * 1000)
    {
       int x;
@@ -36,9 +38,15 @@ static void wait_for_dismiss(win *w, int max_seconds)
       int key;
 
       w->tick();
-      if (w->is_mouse(x, y, button)
-          && (button == button1press || button == button2press || button == button3press))
-         return;
+      while (w->mouse(x, y, button))
+      {
+         if (button == button1press || button == button2press || button == button3press)
+            pressed = true;
+         else if (pressed
+                  && (button == button1release || button == button2release
+                      || button == button3release))
+            return;
+      }
       if (w->inchar(key) != 0 || key != 0)
          return;
       delay(poll_ms);

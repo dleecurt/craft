@@ -23,6 +23,7 @@
 #include "option_menu.h"
 #include "xtimer.h"
 #include "screens.h"
+#include "savegame.h"
 
 #define min_cycle_time 50
 
@@ -282,7 +283,9 @@ void init_craft(char host[max_players][128], char name[max_players][128],
    }
    { // init_land
       load_land_props();
-      if (is_water_world)
+      if (restoring)
+         ; /* the landscape was loaded by restore_game_globals() */
+      else if (is_water_world)
          rnd_water_land();
       else
          rnd_land();
@@ -335,6 +338,37 @@ void finish_craft()
    delete (objects);
 }
 
+/* A free 2x2 dry spot for a starting unit at (xx, yy). */
+static bool start_spot_ok(int xx, int yy)
+{
+   return 1 <= xx && xx <= landscape_dx - 3 && 1 <= yy && yy <= landscape_dy - 3
+          && unit[xx][yy] == none && unit[xx + 1][yy] == none && unit[xx + 1][yy + 1] == none
+          && landscape[xx][yy] != land_water && landscape[xx + 1][yy] != land_water
+          && landscape[xx + 1][yy + 1] != land_water && landscape[xx][yy] != land_sea
+          && landscape[xx + 1][yy] != land_sea && landscape[xx + 1][yy + 1] != land_sea;
+}
+
+/* The valid start spot nearest (cx, cy); leaves (xx, yy) unchanged if
+   there is none at all. */
+static void nearest_start_spot(int cx, int cy, int &xx, int &yy)
+{
+   long best = -1;
+
+   for (int x = 1; x <= landscape_dx - 3; x++)
+      for (int y = 1; y <= landscape_dy - 3; y++)
+         if (start_spot_ok(x, y))
+         {
+            long d = (long)(x - cx) * (x - cx) + (long)(y - cy) * (y - cy);
+
+            if (best < 0 || d < best)
+            {
+               best = d;
+               xx = x;
+               yy = y;
+            }
+         }
+}
+
 void set_initial_objects()
 {
    int color = blue;
@@ -374,16 +408,20 @@ void set_initial_objects()
                   bool il_ok;
 
                   { // check_il
-                     il_ok = (1 <= xx && xx <= landscape_dx - 3 && 1 <= yy && yy <= landscape_dy - 3
-                              && unit[xx][yy] == none && unit[xx + 1][yy] == none
-                              && unit[xx + 1][yy + 1] == none && landscape[xx][yy] != land_water
-                              && landscape[xx + 1][yy] != land_water
-                              && landscape[xx + 1][yy + 1] != land_water
-                              && landscape[xx][yy] != land_sea && landscape[xx + 1][yy] != land_sea
-                              && landscape[xx + 1][yy + 1] != land_sea);
+                     il_ok = start_spot_ok(xx, yy);
                   }
+                  int steps = 0;
+
                   while (!il_ok)
                   {
+                     if (++steps > 20000)
+                     { // give_up_walking_and_search
+                        /* The random walk can loop forever on an island with no free
+                           2x2 dry spot it can reach; take the valid spot nearest the
+                           island centre instead. */
+                        nearest_start_spot(ox, oy, xx, yy);
+                        break;
+                     }
                      { // perhaps_backstep
                         if (is_water(10000, xx, yy))
                         {
@@ -398,15 +436,7 @@ void set_initial_objects()
                         yy = i_bound(1, yy + i_random(-2, 2), landscape_dy - 3);
                      }
                      { // check_il
-                        il_ok
-                            = (1 <= xx && xx <= landscape_dx - 3 && 1 <= yy
-                               && yy <= landscape_dy - 3 && unit[xx][yy] == none
-                               && unit[xx + 1][yy] == none && unit[xx + 1][yy + 1] == none
-                               && landscape[xx][yy] != land_water
-                               && landscape[xx + 1][yy] != land_water
-                               && landscape[xx + 1][yy + 1] != land_water
-                               && landscape[xx][yy] != land_sea && landscape[xx + 1][yy] != land_sea
-                               && landscape[xx + 1][yy + 1] != land_sea);
+                        il_ok = start_spot_ok(xx, yy);
                      }
                   }
                   { // set_to_grass
@@ -517,16 +547,20 @@ void set_initial_objects()
                   bool il_ok;
 
                   { // check_il
-                     il_ok = (1 <= xx && xx <= landscape_dx - 3 && 1 <= yy && yy <= landscape_dy - 3
-                              && unit[xx][yy] == none && unit[xx + 1][yy] == none
-                              && unit[xx + 1][yy + 1] == none && landscape[xx][yy] != land_water
-                              && landscape[xx + 1][yy] != land_water
-                              && landscape[xx + 1][yy + 1] != land_water
-                              && landscape[xx][yy] != land_sea && landscape[xx + 1][yy] != land_sea
-                              && landscape[xx + 1][yy + 1] != land_sea);
+                     il_ok = start_spot_ok(xx, yy);
                   }
+                  int steps = 0;
+
                   while (!il_ok)
                   {
+                     if (++steps > 20000)
+                     { // give_up_walking_and_search
+                        /* The random walk can loop forever on an island with no free
+                           2x2 dry spot it can reach; take the valid spot nearest the
+                           island centre instead. */
+                        nearest_start_spot(ox, oy, xx, yy);
+                        break;
+                     }
                      { // perhaps_backstep
                         if (is_water(10000, xx, yy))
                         {
@@ -541,15 +575,7 @@ void set_initial_objects()
                         yy = i_bound(1, yy + i_random(-2, 2), landscape_dy - 3);
                      }
                      { // check_il
-                        il_ok
-                            = (1 <= xx && xx <= landscape_dx - 3 && 1 <= yy
-                               && yy <= landscape_dy - 3 && unit[xx][yy] == none
-                               && unit[xx + 1][yy] == none && unit[xx + 1][yy + 1] == none
-                               && landscape[xx][yy] != land_water
-                               && landscape[xx + 1][yy] != land_water
-                               && landscape[xx + 1][yy + 1] != land_water
-                               && landscape[xx][yy] != land_sea && landscape[xx + 1][yy] != land_sea
-                               && landscape[xx + 1][yy + 1] != land_sea);
+                        il_ok = start_spot_ok(xx, yy);
                      }
                   }
                   { // set_to_grass
@@ -660,16 +686,20 @@ void set_initial_objects()
                   bool il_ok;
 
                   { // check_il
-                     il_ok = (1 <= xx && xx <= landscape_dx - 3 && 1 <= yy && yy <= landscape_dy - 3
-                              && unit[xx][yy] == none && unit[xx + 1][yy] == none
-                              && unit[xx + 1][yy + 1] == none && landscape[xx][yy] != land_water
-                              && landscape[xx + 1][yy] != land_water
-                              && landscape[xx + 1][yy + 1] != land_water
-                              && landscape[xx][yy] != land_sea && landscape[xx + 1][yy] != land_sea
-                              && landscape[xx + 1][yy + 1] != land_sea);
+                     il_ok = start_spot_ok(xx, yy);
                   }
+                  int steps = 0;
+
                   while (!il_ok)
                   {
+                     if (++steps > 20000)
+                     { // give_up_walking_and_search
+                        /* The random walk can loop forever on an island with no free
+                           2x2 dry spot it can reach; take the valid spot nearest the
+                           island centre instead. */
+                        nearest_start_spot(ox, oy, xx, yy);
+                        break;
+                     }
                      { // perhaps_backstep
                         if (is_water(10000, xx, yy))
                         {
@@ -684,15 +714,7 @@ void set_initial_objects()
                         yy = i_bound(1, yy + i_random(-2, 2), landscape_dy - 3);
                      }
                      { // check_il
-                        il_ok
-                            = (1 <= xx && xx <= landscape_dx - 3 && 1 <= yy
-                               && yy <= landscape_dy - 3 && unit[xx][yy] == none
-                               && unit[xx + 1][yy] == none && unit[xx + 1][yy + 1] == none
-                               && landscape[xx][yy] != land_water
-                               && landscape[xx + 1][yy] != land_water
-                               && landscape[xx + 1][yy + 1] != land_water
-                               && landscape[xx][yy] != land_sea && landscape[xx + 1][yy] != land_sea
-                               && landscape[xx + 1][yy + 1] != land_sea);
+                        il_ok = start_spot_ok(xx, yy);
                      }
                   }
                   { // set_to_grass
@@ -803,16 +825,20 @@ void set_initial_objects()
                   bool il_ok;
 
                   { // check_il
-                     il_ok = (1 <= xx && xx <= landscape_dx - 3 && 1 <= yy && yy <= landscape_dy - 3
-                              && unit[xx][yy] == none && unit[xx + 1][yy] == none
-                              && unit[xx + 1][yy + 1] == none && landscape[xx][yy] != land_water
-                              && landscape[xx + 1][yy] != land_water
-                              && landscape[xx + 1][yy + 1] != land_water
-                              && landscape[xx][yy] != land_sea && landscape[xx + 1][yy] != land_sea
-                              && landscape[xx + 1][yy + 1] != land_sea);
+                     il_ok = start_spot_ok(xx, yy);
                   }
+                  int steps = 0;
+
                   while (!il_ok)
                   {
+                     if (++steps > 20000)
+                     { // give_up_walking_and_search
+                        /* The random walk can loop forever on an island with no free
+                           2x2 dry spot it can reach; take the valid spot nearest the
+                           island centre instead. */
+                        nearest_start_spot(ox, oy, xx, yy);
+                        break;
+                     }
                      { // perhaps_backstep
                         if (is_water(10000, xx, yy))
                         {
@@ -827,15 +853,7 @@ void set_initial_objects()
                         yy = i_bound(1, yy + i_random(-2, 2), landscape_dy - 3);
                      }
                      { // check_il
-                        il_ok
-                            = (1 <= xx && xx <= landscape_dx - 3 && 1 <= yy
-                               && yy <= landscape_dy - 3 && unit[xx][yy] == none
-                               && unit[xx + 1][yy] == none && unit[xx + 1][yy + 1] == none
-                               && landscape[xx][yy] != land_water
-                               && landscape[xx + 1][yy] != land_water
-                               && landscape[xx + 1][yy + 1] != land_water
-                               && landscape[xx][yy] != land_sea && landscape[xx + 1][yy] != land_sea
-                               && landscape[xx + 1][yy + 1] != land_sea);
+                        il_ok = start_spot_ok(xx, yy);
                      }
                   }
                   { // set_to_grass
@@ -934,12 +952,35 @@ int main()
             active[i] = false;
          option_menu(act_speed, tic);
       }
-      d_randomize(tic);
-      init_speed(act_speed);
+      if (restoring)
+      { // load_options_and_land
+         if (!restore_game_globals(restore_name))
+         {
+            fprintf(stderr, "craft: could not restore \"%s\"\n", restore_name);
+            exit(1);
+         }
+      }
+      else
+      {
+         d_randomize(tic);
+         init_speed(act_speed);
+      }
       init_craft(host, name, speed);
-      printf("starting game with seed %d\n", tic);
+      if (restoring)
+         printf("restoring game \"%s\"\n", restore_name);
+      else
+         printf("starting game with seed %d\n", tic);
    }
-   set_initial_objects();
+   if (restoring)
+   { // load_objects_and_players
+      if (!restore_game_objects())
+      {
+         fprintf(stderr, "craft: the saved game \"%s\" is damaged\n", restore_name);
+         exit(1);
+      }
+   }
+   else
+      set_initial_objects();
    { // exec_craft
       bool quit = false;
       int cnt;

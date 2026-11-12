@@ -20,10 +20,11 @@ system-wide.
 
 ## Building
 
-You need a C++ compiler, the Xlib development files, autoconf and automake.
+You need a C++ compiler, the Xlib and zlib development files, autoconf and
+automake.
 On Debian or Ubuntu:
 
-    sudo apt install build-essential autoconf automake libx11-dev
+    sudo apt install build-essential autoconf automake libx11-dev zlib1g-dev
 
 Then:
 
@@ -85,6 +86,25 @@ islands, and a seed to repeat a landscape) and the four players. Each
 player button cycles between **Human**, **Computer** and inactive
 (`- - -`); since version 3.5 more than one computer player can take part.
 The full rules are in [`doc/craft.html`](doc/craft.html).
+
+### Saving and restoring
+
+Press **save** in the status panel (above **pause**) to save the running
+game. Give it a name (the date and time is suggested) and press Return.
+When you quit, the game asks whether to save first.
+
+To continue a saved game, press **restore** under **Play** in the start
+menu and pick it from the list (newest first).
+
+Saves are kept in `~/.local/share/craft/saves/` (or
+`$XDG_DATA_HOME/craft/saves/`) as `NAME.craftsave` files. They hold the
+whole game: the landscape, every unit and building, all players and the
+computer players' plans, so a restored game carries on exactly where it
+was saved. Games with several human players can be saved too; restoring
+one reopens the windows on the same X displays. A save only loads in the
+same version of Craft that wrote it (the game says so if it doesn't).
+
+### Pausing
 
 To pause, press **pause** next to **quit** in the status panel (or the
 button with your name in the pause panel, as in the original). The game

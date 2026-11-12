@@ -77,7 +77,7 @@ class table
 
      void  check_bound (int adr, int row_no, int column_no, const char action []);
      void  save        ();
-     void  load        ();
+     bool  load        ();
 
      void  rename      (char  new_dir [], char new_name []);
      void  rename      (char  new_name []);

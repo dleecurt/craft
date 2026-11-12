@@ -16,6 +16,12 @@ and their settings.
 Press
 .B Play
 to start.
+.PP
+Press
+.B save
+during a game to save it, and
+.B restore
+in the start menu to continue a saved game.
 .SH ENVIRONMENT
 .TP
 .B DISPLAY
@@ -30,6 +36,12 @@ If unset,
 .B craft
 uses the current directory when it holds the data, and otherwise the
 installed data directory.
+.TP
+.B XDG_DATA_HOME
+Saved games are kept in
+.IR $XDG_DATA_HOME/craft/saves ,
+by default
+.IR ~/.local/share/craft/saves .
 .SH FILES
 .TP
 .I PREFIX/share/craft/

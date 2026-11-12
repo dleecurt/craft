@@ -26,6 +26,10 @@ AC_SUBST([X11_LIBS])
 
 AC_CHECK_LIB([m], [sqrt])
 
+dnl zlib, for compressed saved games
+AC_CHECK_HEADER([zlib.h], [], [AC_MSG_ERROR([zlib.h not found (install zlib1g-dev or zlib-devel)])])
+AC_CHECK_LIB([z], [gzopen], [], [AC_MSG_ERROR([libz not found (install zlib1g-dev or zlib-devel)])])
+
 dnl Art tools (picture editor, morph editor, converters)
 AC_ARG_ENABLE([tools],
   [AS_HELP_STRING([--disable-tools], [do not build the craft-* art tools])],

@@ -8,6 +8,7 @@
  */
 
 #include "screens.h"
+#include "savegame.h"
 #include "scroller.h"
 #include "ppm.h"
 #include "dial.h"
@@ -44,6 +45,7 @@ int act_speed;
 int r_power;
 int r_agress;
 bool was_seed;
+button *b_restore = NULL; /* "restore" under the menu column */
 
 void show_flags()
 {
@@ -75,6 +77,8 @@ void show_flags()
          p[m_no]->show(flag_x, i * flag_dy);
       }
    }
+   if (b_restore != NULL)
+      b_restore->press(false); /* redraw it over the cleared column */
    w->tick();
 }
 
@@ -121,6 +125,25 @@ bool any_flag_request()
    int x;
    int y;
    int b;
+
+   if (b_restore != NULL && b_restore->eval())
+   { // handle_restore
+      char chosen[128];
+      bool ok;
+
+      b_restore->press(true);
+      ok = choose_saved_game(chosen);
+      b_restore->press(false);
+      if (ok)
+      { // leave_the_menu_as_if_play_was_pressed
+         snprintf(restore_name, sizeof(restore_name), "%s", chosen);
+         restoring = true;
+         for (int i = 0; i < num_menus; i++)
+            if (menu_type[i] == m_quit)
+               act_menu = i;
+         return true;
+      }
+   }
 
    if (w->is_mouse(x, y, b) && (x >= flag_x && y <= num_menus * flag_dy))
    { // handle_flag_request
@@ -496,6 +519,7 @@ void option_menu(double &speed, int &tic)
          menu_type[6] = m_cancel;
          menu_type[7] = m_quit;
          num_menus = 8;
+         b_restore = new button(w, "restore", flag_x + 18, num_menus * flag_dy + 22);
          show_flags();
          active[0] = true;
          active[1] = true;

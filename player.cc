@@ -8,6 +8,7 @@
  */
 
 #include "player.h"
+#include "savegame.h"
 #include "masks.h"
 #include "object_handler.h"
 #include "craft.h"
@@ -217,6 +218,9 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
          b_pause = new button(w_status, "pause", 20, 640);
          b_pause_down = false;
       }
+      { // open_save
+         b_save = new button(w_status, "save", 20, 610);
+      }
       { // perhaps_open_debug
          is_debug = false;
          debug_on = false;
@@ -313,6 +317,7 @@ void player::deactivate()
       }
       delete (b_quit);
       delete (b_pause);
+      delete (b_save);
       delete (w_land);
       delete (w_overview);
       /*
@@ -2233,7 +2238,15 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
          { // handle_quit_pressed
             b_quit->press(true);
             is_quit = yes(w_craft, host, "realy quit, coward");
+            if (is_quit && yes(w_craft, host, "save the game first?"))
+               save_game_dialog();
             b_quit->press(false);
+         }
+         if (b_save->eval())
+         { // handle_save_pressed
+            b_save->press(true);
+            save_game_dialog();
+            b_save->press(false);
          }
          if (is_debug && b_debug->eval())
          {

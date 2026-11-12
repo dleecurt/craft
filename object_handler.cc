@@ -72,6 +72,8 @@ object_handler::object_handler()
       { // init_obj
          free[i] = i + 1;
          is_free[i] = true;
+         s[i] = NULL; /* ship pointers were left uninitialised */
+         rob[i] = NULL;
       }
    }
    free[max_objects - 1] = none;
@@ -3057,6 +3059,7 @@ void object_handler::exec_ship_zombi(int id)
          players[color_player[color[id]]]->add_sun(x[mid], y[mid], vr[mid]);
       }
       delete (s[id]);
+      s[id] = NULL;
       delete_object(id);
    }
    else

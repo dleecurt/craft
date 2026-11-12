@@ -22,6 +22,7 @@
 #include "ship.h"
 #include "option_menu.h"
 #include "xtimer.h"
+#include "screens.h"
 
 #define min_cycle_time 50
 
@@ -927,6 +928,7 @@ int main()
    { // init_players
       int tic;
 
+      show_splash();
       { // get_params
          for (int i = 0; i < max_players; i++)
             active[i] = false;
@@ -1300,4 +1302,5 @@ int main()
       }
    }
    finish_craft();
+   show_credits();
 }

@@ -7,6 +7,7 @@
  * Exact changes: git log -- option_menu.cc option_menu.hc
  */
 
+#include "screens.h"
 #include "scroller.h"
 #include "ppm.h"
 #include "dial.h"
@@ -546,6 +547,7 @@ void option_menu(double &speed, int &tic)
             inactive_menu(act_menu, tic);
             break;
          case m_cancel:
+            show_credits();
             exit(0);
             break;
          case m_quit:

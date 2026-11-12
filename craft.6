@@ -3,6 +3,8 @@
 craft \- CRAFT: The Vicious Vikings, a real-time strategy game for X11
 .SH SYNOPSIS
 .B craft
+.RB [ \-scale
+.IR N ]
 .SH DESCRIPTION
 .B craft
 is a real-time strategy game in the style of Warcraft and Dune II.
@@ -22,6 +24,19 @@ Press
 during a game to save it, and
 .B restore
 in the start menu to continue a saved game.
+.PP
+On large screens the game is zoomed (1.25\(mu, 1.5\(mu, 2\(mu or 3\(mu).
+By default the largest step that fits the screen is used; change it
+with the zoom buttons on the start menu's
+.B Details
+page.
+.SH OPTIONS
+.TP
+.BI \-scale " N"
+Zoom the game
+.I N
+times (1 to 4, for example 1.5) for this run only, instead of the zoom
+set in the start menu.
 .SH ENVIRONMENT
 .TP
 .B DISPLAY
@@ -42,6 +57,12 @@ Saved games are kept in
 .IR $XDG_DATA_HOME/craft/saves ,
 by default
 .IR ~/.local/share/craft/saves .
+.TP
+.B XDG_CONFIG_HOME
+The zoom setting is kept in
+.IR $XDG_CONFIG_HOME/craft/settings ,
+by default
+.IR ~/.config/craft/settings .
 .SH FILES
 .TP
 .I PREFIX/share/craft/

@@ -3,7 +3,8 @@
  * as clause 3 of its license requires (see LICENSE):
  *   2018-2019  Quipyowert2/craft: fixes for modern compilers
  *   2026       dleecurt/craft: converted from win.hc (hcc refinements
- *              expanded) to plain C++; compiler, warning and bug fixes
+ *              expanded) to plain C++; compiler, warning and bug fixes;
+ *              new features (see README), including zoom
  * Exact changes: git log -- win.cc win.hc
  */
 
@@ -20,7 +21,11 @@
 #include "stdlib.h"
 #include "datadir.h"
 
+#include <math.h>
+#include <X11/Xlib.h>
+#include <X11/extensions/Xrender.h> /* before win.h, whose colour macros clash */
 #include "win.h"
+#include "zoom.h"
 #include "xfile.h"
 #include "xstring.h"
 #include "errorhandling.h"
@@ -377,6 +382,7 @@ void win::free_buffer()
          all_wins[i] = all_wins[--num_wins];
          break;
       }
+   free_zoom();
    if (mybuffer != None)
    {
       XFreePixmap(mydisplay, mybuffer);
@@ -385,14 +391,20 @@ void win::free_buffer()
    mybuffer = None;
 }
 
+/* x, y, dx, dy are window (zoomed) coordinates, as in an Expose event. */
 void win::repaint(int x, int y, int dx, int dy)
 {
-   if (mybuffer != None)
+   if (mybuffer == None)
+      return;
+   if (to_window())
       XCopyArea(mydisplay, mybuffer, mywindow, mycopy_gc, x, y, dx, dy, x, y);
+   else
+      present_phys(x, y, dx, dy);
 }
 
 /* Repaint the exposed parts of every window, including windows the game
-   is not polling at the moment. */
+   is not polling at the moment, and show what has been drawn into the
+   buffers of zoomed windows since the last call. */
 void win::repaint_exposed()
 {
    XEvent ev;
@@ -404,6 +416,216 @@ void win::repaint_exposed()
       while (XCheckTypedWindowEvent(w->mydisplay, w->mywindow, Expose, &ev))
          w->repaint(ev.xexpose.x, ev.xexpose.y, ev.xexpose.width, ev.xexpose.height);
    }
+   present_all();
+}
+
+/*----------------------------------------------------------------------*/
+/* Zoom                                                                 */
+/*                                                                      */
+/* A zoomed window (myscale > 1) is drawn only into mybuffer, at the    */
+/* original size. Each drawing call records the area it changed         */
+/* (touch), and present_all, called whenever the game polls for events, */
+/* has the X server enlarge those areas into the windows with XRender.  */
+/* Mouse positions are divided back down, so the game never sees the    */
+/* zoom.                                                                */
+/*----------------------------------------------------------------------*/
+
+bool win::to_window()
+{
+   return mybuffer == None || src_pic == 0;
+}
+
+int win::zoom_in(int v)
+{
+   return (int)floor(v * myscale + 0.5);
+}
+
+int win::zoom_out(int v)
+{
+   return (int)floor(v / myscale);
+}
+
+void win::touch(int x, int y, int dx, int dy)
+{
+   if (to_window() || dx <= 0 || dy <= 0)
+      return;
+   /* one pixel more on each side: smooth scaling reads neighbours */
+   x -= 1;
+   y -= 1;
+   dx += 2;
+   dy += 2;
+   if (!is_dirty)
+   {
+      dirty_x0 = x;
+      dirty_y0 = y;
+      dirty_x1 = x + dx;
+      dirty_y1 = y + dy;
+      is_dirty = true;
+   }
+   else
+   {
+      dirty_x0 = i_min(dirty_x0, x);
+      dirty_y0 = i_min(dirty_y0, y);
+      dirty_x1 = i_max(dirty_x1, x + dx);
+      dirty_y1 = i_max(dirty_y1, y + dy);
+   }
+}
+
+void win::touch_all()
+{
+   touch(0, 0, w_dx, w_dy);
+}
+
+void win::touch_poly(polyline *p)
+{
+   if (p->n <= 0)
+      return;
+   {
+      int x0 = p->p[0].x;
+      int y0 = p->p[0].y;
+      int x1 = x0;
+      int y1 = y0;
+
+      for (int i = 1; i < p->n; i++)
+      {
+         x0 = i_min(x0, p->p[i].x);
+         y0 = i_min(y0, p->p[i].y);
+         x1 = i_max(x1, p->p[i].x);
+         y1 = i_max(y1, p->p[i].y);
+      }
+      touch(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+   }
+}
+
+void win::present_phys(int x, int y, int dx, int dy)
+{
+   if (to_window() || dx <= 0 || dy <= 0)
+      return;
+   XRenderComposite(mydisplay, PictOpSrc, (Picture)src_pic, None, (Picture)dst_pic, x, y, 0, 0, x,
+                    y, dx, dy);
+}
+
+void win::present()
+{
+   if (!is_dirty)
+      return;
+   is_dirty = false;
+   {
+      int x0 = i_max(0, (int)floor(dirty_x0 * myscale));
+      int y0 = i_max(0, (int)floor(dirty_y0 * myscale));
+      int x1 = (int)ceil(dirty_x1 * myscale);
+      int y1 = (int)ceil(dirty_y1 * myscale);
+
+      present_phys(x0, y0, x1 - x0, y1 - y0);
+   }
+   XFlush(mydisplay);
+}
+
+void win::present_all()
+{
+   for (int i = 0; i < num_wins; i++)
+      all_wins[i]->present();
+}
+
+/* Set up XRender pictures for a window that has a buffer and a zoom
+   other than 1. Falls back to no zoom if anything is missing. */
+void win::init_zoom()
+{
+   XRenderPictFormat *fmt;
+   XRenderPictureAttributes pa;
+   XTransform t;
+   int ev;
+   int err;
+
+   src_pic = 0;
+   dst_pic = 0;
+   is_dirty = false;
+   if (mybuffer == None || myscale == 1.0)
+      return;
+   fmt = XRenderFindVisualFormat(mydisplay, DefaultVisual(mydisplay, myscreen));
+   if (!XRenderQueryExtension(mydisplay, &ev, &err) || fmt == NULL)
+   {
+      myscale = 1.0;
+      return;
+   }
+   pa.repeat = RepeatPad; /* edges blend with themselves, not black */
+   src_pic = XRenderCreatePicture(mydisplay, mybuffer, fmt, CPRepeat, &pa);
+   dst_pic = XRenderCreatePicture(mydisplay, mywindow, fmt, 0, NULL);
+   memset(&t, 0, sizeof(t));
+   t.matrix[0][0] = XDoubleToFixed(1.0 / myscale);
+   t.matrix[1][1] = XDoubleToFixed(1.0 / myscale);
+   t.matrix[2][2] = XDoubleToFixed(1.0);
+   XRenderSetPictureTransform(mydisplay, (Picture)src_pic, &t);
+   /* whole-number zoom keeps pixels sharp; other steps are smoothed */
+   if (myscale == floor(myscale))
+      XRenderSetPictureFilter(mydisplay, (Picture)src_pic, FilterNearest, NULL, 0);
+   else
+      XRenderSetPictureFilter(mydisplay, (Picture)src_pic, FilterBilinear, NULL, 0);
+}
+
+void win::free_zoom()
+{
+   if (src_pic != 0)
+      XRenderFreePicture(mydisplay, (Picture)src_pic);
+   if (dst_pic != 0)
+      XRenderFreePicture(mydisplay, (Picture)dst_pic);
+   src_pic = 0;
+   dst_pic = 0;
+   is_dirty = false;
+}
+
+/* Turn the unzoomed size hints (and, for child windows, position) into
+   window coordinates. */
+void win::scale_hints()
+{
+   if (myscale == 1.0)
+      return;
+   myhint->width = zoom_in(myhint->width);
+   myhint->height = zoom_in(myhint->height);
+   myhint->min_width = zoom_in(myhint->min_width);
+   myhint->min_height = zoom_in(myhint->min_height);
+   myhint->max_width = zoom_in(myhint->max_width);
+   myhint->max_height = zoom_in(myhint->max_height);
+   if (is_child)
+   {
+      myhint->x = zoom_in(myhint->x);
+      myhint->y = zoom_in(myhint->y);
+   }
+}
+
+/* Change the zoom of an open window: resize it (and move it, if it is a
+   child) and show its whole buffer again. */
+void win::set_scale(double s)
+{
+   if (!is_enable || mybuffer == None || s == myscale)
+      return;
+   free_zoom();
+   myscale = s;
+   init_zoom();
+   myhint->width = zoom_in(w_dx);
+   myhint->height = zoom_in(w_dy);
+   myhint->min_width = myhint->max_width = myhint->width;
+   myhint->min_height = myhint->max_height = myhint->height;
+   if (is_child)
+      XMoveResizeWindow(mydisplay, mywindow, zoom_in(log_x), zoom_in(log_y), myhint->width,
+                        myhint->height);
+   else
+   {
+      XSetWMNormalHints(mydisplay, mywindow, myhint);
+      XResizeWindow(mydisplay, mywindow, myhint->width, myhint->height);
+   }
+   if (to_window())
+      XCopyArea(mydisplay, mybuffer, mywindow, mycopy_gc, 0, 0, w_dx, w_dy, 0, 0);
+   else
+      touch_all();
+}
+
+/* Change the zoom of every open window (the start menu's zoom buttons). */
+void win::rezoom_all(double s)
+{
+   for (int i = 0; i < num_wins; i++)
+      all_wins[i]->set_scale(s);
+   present_all();
 }
 
 /*----------------------------------------------------------------------*/
@@ -421,6 +643,13 @@ win::win(const char title[], const char host[], int x, int y, int dx, int dy, bo
       strcpy(fix_dir, "");
    }
    mybuffer = None;
+   myscale = 1.0;
+   src_pic = 0;
+   dst_pic = 0;
+   is_dirty = false;
+   is_child = false;
+   log_x = 0;
+   log_y = 0;
    is_enable = enable;
    if (is_enable)
    { // perform_open
@@ -429,6 +658,8 @@ win::win(const char title[], const char host[], int x, int y, int dx, int dy, bo
       int argc = 0;
       char **argv = NULL;
       XSetWindowAttributes new_attr;
+      int log_w;
+      int log_h;
 
       { // init_mouse
          num_mouse_events = 0;
@@ -486,6 +717,8 @@ win::win(const char title[], const char host[], int x, int y, int dx, int dy, bo
          myhint->max_height = 864;
          myhint->flags = PMinSize | PMaxSize;
          is_alien = false;
+         is_child = false;
+         myscale = resize_enable ? 1.0 : zoom_current();
       }
       { // perhaps_user_position
          if (x == by_fix || y == by_fix)
@@ -541,6 +774,11 @@ win::win(const char title[], const char host[], int x, int y, int dx, int dy, bo
          myhint->min_height = myhint->height;
          myhint->max_height = myhint->height;
       }
+      log_x = myhint->x;
+      log_y = myhint->y;
+      log_w = myhint->width;
+      log_h = myhint->height;
+      scale_hints();
       { // create_window
          mywindow
              = XCreateSimpleWindow(mydisplay, DefaultRootWindow(mydisplay), myhint->x, myhint->y,
@@ -555,10 +793,11 @@ win::win(const char title[], const char host[], int x, int y, int dx, int dy, bo
          XSetBackground(mydisplay, mygc, mybackground);
          XSetForeground(mydisplay, mygc, myforeground);
          if (resize_enable)
-            init_buffer(i_max(myhint->width, DisplayWidth(mydisplay, myscreen)),
-                        i_max(myhint->height, DisplayHeight(mydisplay, myscreen)));
+            init_buffer(i_max(log_w, DisplayWidth(mydisplay, myscreen)),
+                        i_max(log_h, DisplayHeight(mydisplay, myscreen)));
          else
-            init_buffer(myhint->width, myhint->height);
+            init_buffer(log_w, log_h);
+         init_zoom();
          XSelectInput(mydisplay, mywindow,
                       PropertyChangeMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask
                           | KeyPressMask | KeyReleaseMask | ExposureMask | EnterWindowMask
@@ -591,6 +830,13 @@ win::win(win *parent, const char title[], char host[], int x, int y, int dx, int
       strcpy(fix_dir, "");
    }
    mybuffer = None;
+   myscale = 1.0;
+   src_pic = 0;
+   dst_pic = 0;
+   is_dirty = false;
+   is_child = false;
+   log_x = 0;
+   log_y = 0;
    is_enable = enable;
    if (is_enable)
    { // perform_open
@@ -599,6 +845,8 @@ win::win(win *parent, const char title[], char host[], int x, int y, int dx, int
       int argc = 0;
       char **argv = NULL;
       XSetWindowAttributes new_attr;
+      int log_w;
+      int log_h;
 
       { // init_mouse
          num_mouse_events = 0;
@@ -649,6 +897,8 @@ win::win(win *parent, const char title[], char host[], int x, int y, int dx, int
          myhint->max_height = 864;
          myhint->flags = PMinSize | PMaxSize;
          is_alien = true;
+         is_child = true;
+         myscale = parent->myscale;
       }
       { // perhaps_user_position
          if (x == by_fix || y == by_fix)
@@ -705,6 +955,11 @@ win::win(win *parent, const char title[], char host[], int x, int y, int dx, int
          myhint->max_height = myhint->height;
       }
       create_color_map();
+      log_x = myhint->x;
+      log_y = myhint->y;
+      log_w = myhint->width;
+      log_h = myhint->height;
+      scale_hints();
       { // create_window
          mywindow
              = XCreateSimpleWindow(mydisplay, parent->mywindow, myhint->x, myhint->y, myhint->width,
@@ -718,10 +973,11 @@ win::win(win *parent, const char title[], char host[], int x, int y, int dx, int
          XSetBackground(mydisplay, mygc, mybackground);
          XSetForeground(mydisplay, mygc, myforeground);
          if (resize_enable)
-            init_buffer(i_max(myhint->width, DisplayWidth(mydisplay, myscreen)),
-                        i_max(myhint->height, DisplayHeight(mydisplay, myscreen)));
+            init_buffer(i_max(log_w, DisplayWidth(mydisplay, myscreen)),
+                        i_max(log_h, DisplayHeight(mydisplay, myscreen)));
          else
-            init_buffer(myhint->width, myhint->height);
+            init_buffer(log_w, log_h);
+         init_zoom();
          XSelectInput(mydisplay, mywindow,
                       PropertyChangeMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask
                           | KeyPressMask | KeyReleaseMask | ExposureMask | EnterWindowMask
@@ -749,6 +1005,11 @@ win::win(char title[])
    myscreen = DefaultScreen(mydisplay);
    cmap = DefaultColormap(mydisplay, myscreen);
    mybuffer = None;
+   myscale = 1.0;
+   src_pic = 0;
+   dst_pic = 0;
+   is_dirty = false;
+   is_child = false;
    mywindow = grab(mydisplay, RootWindow(mydisplay, myscreen), title);
    is_enable = (mywindow != 0);
    if (is_enable)
@@ -806,6 +1067,8 @@ win::~win()
             if (all_wins[i]->mydisplay == mydisplay)
             {
                all_wins[i]->mybuffer = None;
+               all_wins[i]->src_pic = 0;
+               all_wins[i]->dst_pic = 0;
                all_wins[i] = all_wins[--num_wins];
             }
       }
@@ -950,10 +1213,10 @@ void win::tick(bool pause)
                break;
             }
             mouse_inside = true;
-            mouse_x = myevent.xbutton.x;
-            mouse_y = myevent.xbutton.y;
-            mouse_ex[num_mouse_events] = myevent.xbutton.x;
-            mouse_ey[num_mouse_events] = myevent.xbutton.y;
+            mouse_x = zoom_out(myevent.xbutton.x);
+            mouse_y = zoom_out(myevent.xbutton.y);
+            mouse_ex[num_mouse_events] = mouse_x;
+            mouse_ey[num_mouse_events] = mouse_y;
             num_mouse_events = i_min(max_mouse_events - 1, num_mouse_events + 1);
          };
          break;
@@ -975,10 +1238,10 @@ void win::tick(bool pause)
                break;
             }
             mouse_inside = true;
-            mouse_x = myevent.xbutton.x;
-            mouse_y = myevent.xbutton.y;
-            mouse_ex[num_mouse_events] = myevent.xbutton.x;
-            mouse_ey[num_mouse_events] = myevent.xbutton.y;
+            mouse_x = zoom_out(myevent.xbutton.x);
+            mouse_y = zoom_out(myevent.xbutton.y);
+            mouse_ex[num_mouse_events] = mouse_x;
+            mouse_ey[num_mouse_events] = mouse_y;
             mouse_eid[num_mouse_events] = event_id++;
             num_mouse_events = i_min(max_mouse_events - 1, num_mouse_events + 1);
          };
@@ -1029,8 +1292,8 @@ void win::tick(bool pause)
          break;
          case MotionNotify:
          { // send_motion_coords
-            mouse_x = ((XMotionEvent *)&myevent)->x;
-            mouse_y = ((XMotionEvent *)&myevent)->y;
+            mouse_x = zoom_out(((XMotionEvent *)&myevent)->x);
+            mouse_y = zoom_out(((XMotionEvent *)&myevent)->y);
             mouse_inside = true;
          };
          break;
@@ -1064,6 +1327,7 @@ void win::iconify()
 
 void win::xsync()
 {
+   present_all();
    XSync(mydisplay, true);
 }
 
@@ -1367,9 +1631,11 @@ void win::pixel(int x, int y)
 {
    if (is_enable)
    { // perform_draw
-      XDrawPoint(mydisplay, mywindow, mygc, x, y);
+      if (to_window())
+         XDrawPoint(mydisplay, mywindow, mygc, x, y);
       if (mybuffer != None)
          XDrawPoint(mydisplay, mybuffer, mygc, x, y);
+      touch(x, y, 1, 1);
    }
 }
 
@@ -1385,9 +1651,11 @@ void win::draw(polyline *p)
 {
    if (is_enable)
    { // perform_draw
-      XDrawLines(mydisplay, mywindow, mygc, p->p, p->n, CoordModeOrigin);
+      if (to_window())
+         XDrawLines(mydisplay, mywindow, mygc, p->p, p->n, CoordModeOrigin);
       if (mybuffer != None)
          XDrawLines(mydisplay, mybuffer, mygc, p->p, p->n, CoordModeOrigin);
+      touch_poly(p);
    }
 }
 
@@ -1395,9 +1663,11 @@ void win::line(int x1, int y1, int x2, int y2)
 {
    if (is_enable)
    { // perform_line
-      XDrawLine(mydisplay, mywindow, mygc, x1, y1, x2, y2);
+      if (to_window())
+         XDrawLine(mydisplay, mywindow, mygc, x1, y1, x2, y2);
       if (mybuffer != None)
          XDrawLine(mydisplay, mybuffer, mygc, x1, y1, x2, y2);
+      touch(i_min(x1, x2), i_min(y1, y2), i_abs(x2 - x1) + 1, i_abs(y2 - y1) + 1);
    }
 }
 
@@ -1414,7 +1684,9 @@ void win::move(int x, int y, int x1, int y1, int dx, int dy)
    if (mybuffer != None)
    {
       XCopyArea(mydisplay, mybuffer, mybuffer, mygc, x, y, dx, dy, x1, y1);
-      XCopyArea(mydisplay, mybuffer, mywindow, mygc, x1, y1, dx, dy, x1, y1);
+      if (to_window())
+         XCopyArea(mydisplay, mybuffer, mywindow, mygc, x1, y1, dx, dy, x1, y1);
+      touch(x1, y1, dx, dy);
    }
    else
       XCopyArea(mydisplay, mywindow, mywindow, mygc, x, y, dx, dy, x1, y1);
@@ -1498,9 +1770,11 @@ void win::show_map(int x, int y, char name[])
          XReadBitmapFile(mydisplay, mywindow, name, &dx, &dy, &p, &xh, &yh);
       }
       { // show_pixmap
-         XCopyPlane(mydisplay, p, mywindow, mygc, 0, 0, dx, dy, x, y, 1L);
+         if (to_window())
+            XCopyPlane(mydisplay, p, mywindow, mygc, 0, 0, dx, dy, x, y, 1L);
          if (mybuffer != None)
             XCopyPlane(mydisplay, p, mybuffer, mygc, 0, 0, dx, dy, x, y, 1L);
+         touch(x, y, dx, dy);
       }
    }
 }
@@ -1515,9 +1789,11 @@ void win::show_map(int x, int y, int src_x, int src_y, Pixmap m, int dx, int dy)
    if (is_enable)
    {    // perform_show
       { // show_pixmap
-         XCopyArea(mydisplay, m, mywindow, mygc, src_x, src_y, dx, dy, x, y);
+         if (to_window())
+            XCopyArea(mydisplay, m, mywindow, mygc, src_x, src_y, dx, dy, x, y);
          if (mybuffer != None)
             XCopyArea(mydisplay, m, mybuffer, mygc, src_x, src_y, dx, dy, x, y);
+         touch(x, y, dx, dy);
       }
    }
 }
@@ -1568,9 +1844,11 @@ void win::show_map(int x, int y, Pixmap m, int dx, int dy, Pixmap mask, int clip
       }
       XSetClipMask(mydisplay, mygc, mask);
       XSetClipOrigin(mydisplay, mygc, x, y);
-      XCopyArea(mydisplay, m, mywindow, mygc, src_x, src_y, dest_dx, dest_dy, dest_x, dest_y);
+      if (to_window())
+         XCopyArea(mydisplay, m, mywindow, mygc, src_x, src_y, dest_dx, dest_dy, dest_x, dest_y);
       if (mybuffer != None)
          XCopyArea(mydisplay, m, mybuffer, mygc, src_x, src_y, dest_dx, dest_dy, dest_x, dest_y);
+      touch(dest_x, dest_y, dest_dx, dest_dy);
       XSetClipMask(mydisplay, mygc, None);
    }
 }
@@ -1583,9 +1861,11 @@ void win::show_map(Pixmap m, Pixmap mask, int x_source, int y_source, int x_scre
    { // perform_show
       XSetClipMask(mydisplay, mygc, mask);
       XSetClipOrigin(mydisplay, mygc, x_mask, y_mask);
-      XCopyArea(mydisplay, m, mywindow, mygc, x_source, y_source, dx, dy, x_screen, y_screen);
+      if (to_window())
+         XCopyArea(mydisplay, m, mywindow, mygc, x_source, y_source, dx, dy, x_screen, y_screen);
       if (mybuffer != None)
          XCopyArea(mydisplay, m, mybuffer, mygc, x_source, y_source, dx, dy, x_screen, y_screen);
+      touch(x_screen, y_screen, dx, dy);
       XSetClipMask(mydisplay, mygc, None);
    }
 }
@@ -1604,9 +1884,11 @@ void win::fill(polyline *p)
 {
    if (is_enable)
    { // perform_fill
-      XFillPolygon(mydisplay, mywindow, mygc, p->p, p->n, Convex, CoordModeOrigin);
+      if (to_window())
+         XFillPolygon(mydisplay, mywindow, mygc, p->p, p->n, Convex, CoordModeOrigin);
       if (mybuffer != None)
          XFillPolygon(mydisplay, mybuffer, mygc, p->p, p->n, Convex, CoordModeOrigin);
+      touch_poly(p);
    }
 }
 
@@ -1614,9 +1896,11 @@ void win::fill(int x1, int y1, int dx, int dy)
 {
    if (is_enable)
    { // perform_fill
-      XFillRectangle(mydisplay, mywindow, mygc, x1, y1, dx, dy);
+      if (to_window())
+         XFillRectangle(mydisplay, mywindow, mygc, x1, y1, dx, dy);
       if (mybuffer != None)
          XFillRectangle(mydisplay, mybuffer, mygc, x1, y1, dx, dy);
+      touch(x1, y1, dx, dy);
    }
 }
 
@@ -1635,7 +1919,9 @@ void win::shift(int x1, int y1, int x2, int y2, int dx, int dy)
       if (mybuffer != None)
       {
          XCopyArea(mydisplay, mybuffer, mybuffer, mygc, x1, y1, dx, dy, x2, y2);
-         XCopyArea(mydisplay, mybuffer, mywindow, mygc, x2, y2, dx, dy, x2, y2);
+         if (to_window())
+            XCopyArea(mydisplay, mybuffer, mywindow, mygc, x2, y2, dx, dy, x2, y2);
+         touch(x2, y2, dx, dy);
       }
       else
          XCopyArea(mydisplay, mywindow, mywindow, mygc, x1, y1, dx, dy, x2, y2);
@@ -1686,9 +1972,16 @@ void win::write(int x, int y, const char string[])
 {
    if (is_enable)
    { // perform_write
-      XDrawImageString(mydisplay, mywindow, mygc, x, y, string, strlen(string));
+      if (to_window())
+         XDrawImageString(mydisplay, mywindow, mygc, x, y, string, strlen(string));
       if (mybuffer != None)
          XDrawImageString(mydisplay, mybuffer, mygc, x, y, string, strlen(string));
+      if (font_info != NULL)
+         touch(x + font_info->min_bounds.lbearing, y - font_info->max_bounds.ascent,
+               XTextWidth(font_info, string, strlen(string)) + font_info->max_bounds.width,
+               font_info->max_bounds.ascent + font_info->max_bounds.descent);
+      else
+         touch_all();
    }
 }
 
@@ -1835,7 +2128,7 @@ int win::dx()
       XWindowAttributes attr;
 
       XGetWindowAttributes(mydisplay, mywindow, &attr);
-      return attr.width;
+      return (int)floor(attr.width / myscale + 0.5);
    }
    else
       return 0;
@@ -1848,7 +2141,7 @@ int win::dy()
       XWindowAttributes attr;
 
       XGetWindowAttributes(mydisplay, mywindow, &attr);
-      return attr.height;
+      return (int)floor(attr.height / myscale + 0.5);
    }
    else
       return 0;
@@ -1970,9 +2263,11 @@ void win::get_image(XImage *&i, int x, int y, int dx, int dy)
 
 void win::put_image(XImage *i, int x, int y, int dx, int dy)
 {
-   XPutImage(mydisplay, mywindow, mygc, i, 0, 0, x, y, dx, dy);
+   if (to_window())
+      XPutImage(mydisplay, mywindow, mygc, i, 0, 0, x, y, dx, dy);
    if (mybuffer != None)
       XPutImage(mydisplay, mybuffer, mygc, i, 0, 0, x, y, dx, dy);
+   touch(x, y, dx, dy);
 }
 
 #undef red

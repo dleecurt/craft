@@ -3,7 +3,8 @@
  * as clause 3 of its license requires (see LICENSE):
  *   2018-2019  Quipyowert2/craft: fixes for modern compilers
  *   2026       dleecurt/craft: converted from option_menu.hc (hcc refinements
- *              expanded) to plain C++; compiler, warning and bug fixes
+ *              expanded) to plain C++; compiler, warning and bug fixes;
+ *              new features (see README), including zoom
  * Exact changes: git log -- option_menu.cc option_menu.hc
  */
 
@@ -14,6 +15,7 @@
 #include "dial.h"
 #include "buttons.h"
 #include "option_menu.h"
+#include "zoom.h"
 #include "getline.h"
 #include "win.h"
 #include "cmap.h"
@@ -343,6 +345,20 @@ void show_pace()
    w->tick();
 }
 
+/* "zoom auto (1.25x)" between the zoom buttons on the Details page */
+void show_zoom()
+{
+   char text[64];
+
+   snprintf(text, sizeof(text), " zoom %-12s", zoom_label());
+   w->set_background(gray80);
+   w->set_color(gray80);
+   w->fill(92, 14, 140, 26);
+   w->set_color(black);
+   w->write(98, 32, text);
+   w->tick();
+}
+
 void details_menu(int /* act_menu */, double &g_speed, int &tic)
 {
    dial *d_min_land_dx;
@@ -352,6 +368,8 @@ void details_menu(int /* act_menu */, double &g_speed, int &tic)
    scroller *s_act_speed;
    button *b_pace_down;
    button *b_pace_up;
+   button *b_zoom_down;
+   button *b_zoom_up;
 
    {    // init
       { // show_pic
@@ -379,6 +397,9 @@ void details_menu(int /* act_menu */, double &g_speed, int &tic)
          b_pace_down = new button(w, " - ", 60, 268);
          b_pace_up = new button(w, " + ", 236, 268);
          show_pace();
+         b_zoom_down = new button(w, " - ", 60, 14);
+         b_zoom_up = new button(w, " + ", 236, 14);
+         show_zoom();
       }
    }
    { // session
@@ -421,6 +442,16 @@ void details_menu(int /* act_menu */, double &g_speed, int &tic)
                step_game_pace(1);
                show_pace();
             }
+            if (b_zoom_down->eval())
+            {
+               win::rezoom_all(zoom_step(-1));
+               show_zoom();
+            }
+            if (b_zoom_up->eval())
+            {
+               win::rezoom_all(zoom_step(1));
+               show_zoom();
+            }
             switch (act_speed)
             {
             case 1:
@@ -452,6 +483,8 @@ void details_menu(int /* act_menu */, double &g_speed, int &tic)
       delete (s_act_speed);
       delete (b_pace_down);
       delete (b_pace_up);
+      delete (b_zoom_down);
+      delete (b_zoom_up);
    }
 }
 

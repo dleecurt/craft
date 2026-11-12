@@ -46,6 +46,7 @@ libcraft_a_SOURCES = \
 	ppm.cc ppm.h \
 	ppm_handler.cc ppm_handler.h \
 	robot.cc robot.h \
+	screens.cc screens.h \
 	scroller.cc scroller.h \
 	selector.cc selector.h \
 	setupedit.cc setupedit.h \

@@ -62,6 +62,24 @@ enabled with `Option "BackingStore" "true"` in the `Device` section of
 `xorg.conf`, or by running a compositing
 window manager.
 
+## Splash and credits screens
+
+Craft opens with a splash screen and closes with a credits screen. Both
+go away on a mouse click or key press, or by themselves after a few
+seconds. The splash shows the picture `hcraft/splash.cmap` if it is
+installed; without it, the splash shows only the title.
+
+The splash picture is the public-domain (CC0) "Viking warrior" from
+<https://freesvg.org/viking-warrior> (OpenClipart). To make or replace
+it from a PNG (ImageMagick and the bundled art tools):
+
+    convert viking-warrior.png -resize 300x300 -background '#cccccc' \
+            -flatten -compress none splash.ppm
+    craft-ppm2cmap splash.ppm hcraft/splash.cmap
+
+`craft-ppm2cmap` needs a running X display, and the PPM must be the
+plain (ASCII, `P3`) kind, which `-compress none` produces.
+
 ## Playing
 
 The start menu sets up the world (with or without a king, local sight,

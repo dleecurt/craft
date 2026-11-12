@@ -63,6 +63,14 @@ with the source or instructions for getting it (clause 4). In this fork:
   clash with standard programs;
 - the author's name is not used to promote the fork (clause 9).
 
+## Added artwork
+
+- `hcraft/splash.cmap` (the opening splash screen): "Viking warrior" by
+  OpenClipart, from https://freesvg.org/viking-warrior, marked
+  **Public Domain (CC0)**, "free for commercial use, no attribution
+  required". It is credited on the credits screen anyway, so its
+  source stays traceable.
+
 ## Third-party images
 
 Images whose rights are unclear are left out of this fork: a scanned

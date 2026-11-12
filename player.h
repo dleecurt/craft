@@ -112,6 +112,8 @@ class player
    bool   is_debug;
    button *b_debug;
    button *b_quit;
+   button *b_pause;      /* pause/resume the game (same as the own name button) */
+   bool   b_pause_down;
    button *b_unit_s  [5];
    button *b_unit_l  [5];
    button *cmds      [20];

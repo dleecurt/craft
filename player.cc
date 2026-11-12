@@ -213,6 +213,10 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
       { // open_quit
          b_quit = new button(w_status, "quit", 90, 640);
       }
+      { // open_pause
+         b_pause = new button(w_status, "pause", 20, 640);
+         b_pause_down = false;
+      }
       { // perhaps_open_debug
          is_debug = false;
          debug_on = false;
@@ -308,6 +312,7 @@ void player::deactivate()
             delete (b_debug);
       }
       delete (b_quit);
+      delete (b_pause);
       delete (w_land);
       delete (w_overview);
       /*
@@ -2292,7 +2297,7 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
       { // handle_pause
          w_pause->mark_mouse();
          w_pause->tick();
-         if (p_button[p_no]->eval())
+         if (p_button[p_no]->eval() || b_pause->eval())
          {
             paused[p_no] = true;
             num_paused++;
@@ -4047,15 +4052,22 @@ void player::handle_pause()
             p_pressed[i] = paused[i];
          }
       }
+      if (b_pause_down != paused[p_no])
+      {
+         b_pause->press(paused[p_no]);
+         b_pause_down = paused[p_no];
+      }
    }
    { // handle_own
       w_pause->mark_mouse();
       w_pause->tick();
-      if (p_button[p_no]->eval())
+      if (p_button[p_no]->eval() || b_pause->eval())
       {
          paused[p_no] = !paused[p_no];
          p_pressed[p_no] = paused[p_no];
          p_button[p_no]->press(paused[p_no]);
+         b_pause->press(paused[p_no]);
+         b_pause_down = paused[p_no];
          if (p_pressed[p_no])
             num_paused++;
          else

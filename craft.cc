@@ -1132,6 +1132,7 @@ int main()
                   for (int i = 0; i < max_players; i++)
                      if (active[i] && !players[i]->is_robot)
                         players[i]->handle_pause();
+                  delay(min_cycle_time); /* don't spin a CPU core while paused */
                }
             }
             if (was)

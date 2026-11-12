@@ -86,6 +86,11 @@ player button cycles between **Human**, **Computer** and inactive
 (`- - -`); since version 3.5 more than one computer player can take part.
 The full rules are in [`doc/craft.html`](doc/craft.html).
 
+To pause, press **pause** next to **quit** in the status panel (or the
+button with your name in the pause panel, as in the original). The game
+stops for all players until whoever paused presses it again. Quit is not
+available while the game is paused.
+
 New in 3.5, from the author's release notes:
 
 - several computer players in one game;

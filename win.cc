@@ -415,6 +415,9 @@ void win::repaint_exposed()
 
       while (XCheckTypedWindowEvent(w->mydisplay, w->mywindow, Expose, &ev))
          w->repaint(ev.xexpose.x, ev.xexpose.y, ev.xexpose.width, ev.xexpose.height);
+      /* safety net: drop "nothing to redraw" events from any other GC */
+      while (XCheckTypedEvent(w->mydisplay, NoExpose, &ev))
+         ;
    }
    present_all();
 }
@@ -790,6 +793,10 @@ win::win(const char title[], const char host[], int x, int y, int dx, int dy, bo
          XChangeWindowAttributes(mydisplay, mywindow, CWBackingStore, &new_attr);
          XSetStandardProperties(mydisplay, mywindow, full_title, title, None, argv, argc, myhint);
          mygc = XCreateGC(mydisplay, mywindow, 0, 0);
+         /* No GraphicsExpose/NoExpose events: copies come from pixmaps that
+            are always complete, and nothing reads those events, so they
+            piled up in the queue and slowed every event check. */
+         XSetGraphicsExposures(mydisplay, mygc, False);
          XSetBackground(mydisplay, mygc, mybackground);
          XSetForeground(mydisplay, mygc, myforeground);
          if (resize_enable)
@@ -970,6 +977,10 @@ win::win(win *parent, const char title[], char host[], int x, int y, int dx, int
          XChangeWindowAttributes(mydisplay, mywindow, CWBackingStore, &new_attr);
          XSetStandardProperties(mydisplay, mywindow, full_title, title, None, argv, argc, myhint);
          mygc = XCreateGC(mydisplay, mywindow, 0, 0);
+         /* No GraphicsExpose/NoExpose events: copies come from pixmaps that
+            are always complete, and nothing reads those events, so they
+            piled up in the queue and slowed every event check. */
+         XSetGraphicsExposures(mydisplay, mygc, False);
          XSetBackground(mydisplay, mygc, mybackground);
          XSetForeground(mydisplay, mygc, myforeground);
          if (resize_enable)
@@ -1013,7 +1024,10 @@ win::win(char title[])
    mywindow = grab(mydisplay, RootWindow(mydisplay, myscreen), title);
    is_enable = (mywindow != 0);
    if (is_enable)
+   {
       mygc = XCreateGC(mydisplay, mywindow, 0, 0);
+      XSetGraphicsExposures(mydisplay, mygc, False);
+   }
    is_alien = true;
 }
 

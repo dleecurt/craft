@@ -126,6 +126,14 @@ int object_handler::create_object()
       master[free_obj] = false;
       on_ship[free_obj] = -1;
       atta_x[free_obj] = none;
+      /* start with an empty order stack; it used to keep whatever the
+         previous object in this slot left, or uninitialised values */
+      for (int i = 0; i < stack_size; i++)
+      {
+         cmd[free_obj][i] = cmd_idle;
+         gx[free_obj][i] = none;
+         gy[free_obj][i] = none;
+      }
    }
    return free_obj;
 }
@@ -1504,7 +1512,9 @@ void object_handler::exec_worker(int id)
          { // perhaps_new_home
             int g_unit;
 
-            if (gx[id][1] != none && gy[id][1] != none)
+            /* the next order's parameters are not always a map square */
+            if (gx[id][1] >= 0 && gx[id][1] < landscape_dx && gy[id][1] >= 0
+                && gy[id][1] < landscape_dy)
                g_unit = unit[gx[id][1]][gy[id][1]];
             else
                g_unit = none;
@@ -2104,7 +2114,9 @@ void object_handler::exec_trader(int id)
          { // perhaps_new_market
             int g_unit;
 
-            if (gx[id][1] != none && gy[id][1] != none)
+            /* the next order's parameters are not always a map square */
+            if (gx[id][1] >= 0 && gx[id][1] < landscape_dx && gy[id][1] >= 0
+                && gy[id][1] < landscape_dy)
                g_unit = unit[gx[id][1]][gy[id][1]];
             else
                g_unit = none;

@@ -134,6 +134,13 @@ current pace is shown above the **save** button. Choices: 10, 20, 30,
 (The **speed** slider on the Details page is different: it changes how
 many steps each unit needs per action.)
 
+The pace stays the same all game, however many units there are. A step
+takes well under a millisecond on a current machine. To check it, run
+`CRAFT_PROFILE=1 craft`: every 200 steps it prints how long the steps
+took, how many objects are alive, and the length of the X event queue
+(which should stay at a few events). `CRAFT_PROFILE=fast` also drops
+the pause between steps, to fast-forward a game for testing.
+
 ### Pausing
 
 To pause, press **pause** next to **quit** in the status panel (or the

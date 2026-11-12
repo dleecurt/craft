@@ -25,6 +25,7 @@
 #include "xtimer.h"
 #include "screens.h"
 #include "zoom.h"
+#include <time.h>
 #include "savegame.h"
 
 #define min_cycle_time 50 /* pause loop poll interval, ms */
@@ -957,6 +958,69 @@ void set_initial_objects()
    };
 }
 
+/*----------------------------------------------------------------------*/
+/* Step timing, printed to stderr when CRAFT_PROFILE is set: every 200  */
+/* steps, the average and longest time spent per step on player input   */
+/* and drawing, and on the units, with the number of live objects.      */
+/* CRAFT_PROFILE=fast also skips the sleep between steps.               */
+/*----------------------------------------------------------------------*/
+
+/* Milliseconds on a clock that never jumps (unlike the time of day). */
+static double now_ms()
+{
+   struct timespec ts;
+
+   clock_gettime(CLOCK_MONOTONIC, &ts);
+   return ts.tv_sec * 1000.0 + ts.tv_nsec / 1e6;
+}
+
+static int prof_mode = -1; /* -1 unknown, 0 off, 1 on, 2 on and fast */
+static double prof_cmds = 0;
+static double prof_exec = 0;
+static double prof_max = 0;
+static int prof_steps = 0;
+static long prof_total = 0;
+
+static int profiling()
+{
+   if (prof_mode < 0)
+   {
+      const char *e = getenv("CRAFT_PROFILE");
+
+      prof_mode = e == NULL ? 0 : strcmp(e, "fast") == 0 ? 2 : 1;
+   }
+   return prof_mode;
+}
+
+static void prof_step(double t_cmds, double t_exec, double t_all)
+{
+   prof_cmds += t_cmds;
+   prof_exec += t_exec;
+   if (t_all > prof_max)
+      prof_max = t_all;
+   prof_steps++;
+   prof_total++;
+   if (prof_steps == 200)
+   {
+      int alive = 0;
+
+      for (int i = 0; i < max_objects; i++)
+         if (!objects->is_free[i])
+            alive++;
+      int queued = 0;
+
+      for (int i = 0; i < win::num_wins; i++)
+         if (win::all_wins[i]->mydisplay != NULL)
+            queued = i_max(queued, XQLength(win::all_wins[i]->mydisplay));
+      fprintf(stderr,
+              "craft: step %6ld  objects %4d  input+draw %6.2f ms  units %6.2f ms  max %6.1f ms"
+              "  X queue %d\n",
+              prof_total, alive, prof_cmds / prof_steps, prof_exec / prof_steps, prof_max, queued);
+      prof_cmds = prof_exec = prof_max = 0;
+      prof_steps = 0;
+   }
+}
+
 static void usage(FILE *f)
 {
    fprintf(f, "usage: craft [-scale N]\n"
@@ -1051,7 +1115,7 @@ int main(int argc, char **argv)
       while (!quit)
       { // cycle
          int suspend = -1;
-         double cycle_start_time = x_sys_time();
+         double prof_t0 = profiling() ? now_ms() : 0;
 
          { // read_cmds
             for (int pi = 0; pi < max_players; pi++)
@@ -1243,6 +1307,7 @@ int main(int argc, char **argv)
                      players[i]->handle_pause();
             }
          }
+         double t_cmds_done = profiling() ? now_ms() : 0;
          { // exec_objects
             for (int i = 0; i < 1; i++)
             {
@@ -1250,6 +1315,7 @@ int main(int argc, char **argv)
                ticker++;
             }
          }
+         double t_exec_done = profiling() ? now_ms() : 0;
          { // check_over
             int only = -1;
 
@@ -1392,12 +1458,29 @@ int main(int argc, char **argv)
                   active[i] = false;
                }
          }
+         if (profiling())
+            prof_step(t_cmds_done - prof_t0, t_exec_done - t_cmds_done, now_ms() - prof_t0);
          { // perhaps_delay
-            int rest_dt = (int)(1000 / game_pace - (x_sys_time() - cycle_start_time));
+            /* Keep a fixed schedule: each step has its own slot, 1/pace
+               seconds after the last, so the pace stays exact however
+               long a step takes (as long as it fits). After a long stop
+               (pause, a dialog) start a new schedule instead of racing
+               to catch up. */
+            static double next_step = 0;
+            double period = 1000.0 / game_pace;
+            double now = now_ms();
 
-            if (rest_dt > 0)
+            if (next_step == 0 || now - next_step > 4 * period)
+               next_step = now;
+            next_step += period;
+            if (next_step > now && profiling() != 2)
             {
-               delay(rest_dt);
+               struct timespec ts;
+               double wait = next_step - now;
+
+               ts.tv_sec = (time_t)(wait / 1000);
+               ts.tv_nsec = (long)((wait - ts.tv_sec * 1000.0) * 1e6);
+               nanosleep(&ts, NULL);
             }
          }
       }

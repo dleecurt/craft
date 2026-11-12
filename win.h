@@ -2,7 +2,7 @@
  * Changed from the CRAFT 3.5 Standard Version (craftcc35.tar.Z),
  * as clause 3 of its license requires (see LICENSE):
  *   2018-2019  Quipyowert2/craft: fixes for modern compilers
- *   2026       dleecurt/craft: compiler, warning and bug fixes
+ *   2026       dleecurt/craft: compiler, warning and bug fixes; zoom
  * Exact changes: git log -- win.h
  */
 
@@ -229,6 +229,33 @@ class win
      void          init_buffer     (int buffer_dx, int buffer_dy);
      void          free_buffer     ();
      void          repaint         (int x, int y, int dx, int dy);
+     /* Zoom: windows draw at their original size into mybuffer, and the
+        X server enlarges the buffer into the window (see zoom.h). */
+     double        myscale;      /* 1 = no zoom */
+     unsigned long src_pic;      /* XRender picture of mybuffer */
+     unsigned long dst_pic;      /* XRender picture of mywindow */
+     int           log_x;        /* position inside the parent, unzoomed */
+     int           log_y;
+     bool          is_child;
+     bool          is_dirty;     /* parts of mybuffer not yet shown */
+     int           dirty_x0;
+     int           dirty_y0;
+     int           dirty_x1;
+     int           dirty_y1;
+     bool          to_window     ();
+     void          touch         (int x, int y, int dx, int dy);
+     void          touch_all     ();
+     void          touch_poly    (polyline *p);
+     void          present       ();
+     void          present_phys  (int x, int y, int dx, int dy);
+     void          init_zoom     ();
+     void          free_zoom     ();
+     void          scale_hints   ();
+     int           zoom_in       (int v);
+     int           zoom_out      (int v);
+     void          set_scale     (double s);
+     static void   present_all   ();
+     static void   rezoom_all    (double s);
 
      int           colors  [max_colors];
      int           color_r [max_colors];

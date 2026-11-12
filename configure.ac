@@ -20,6 +20,13 @@ LIBS="$X_LIBS $LIBS"
 AC_CHECK_HEADER([X11/Xlib.h], [], [AC_MSG_ERROR([X11/Xlib.h not found])])
 AC_CHECK_LIB([X11], [XOpenDisplay], [X11_LIBS="$X_LIBS $X_PRE_LIBS -lX11 $X_EXTRA_LIBS"],
              [AC_MSG_ERROR([libX11 not found])])
+dnl XRender, for zooming the game on large screens
+AC_CHECK_HEADER([X11/extensions/Xrender.h], [],
+                [AC_MSG_ERROR([X11/extensions/Xrender.h not found (install libxrender-dev or libXrender-devel)])],
+                [#include <X11/Xlib.h>])
+AC_CHECK_LIB([Xrender], [XRenderCreatePicture], [X11_LIBS="$X_LIBS $X_PRE_LIBS -lXrender -lX11 $X_EXTRA_LIBS"],
+             [AC_MSG_ERROR([libXrender not found (install libxrender-dev or libXrender-devel)])],
+             [-lX11])
 LIBS=$save_LIBS
 CPPFLAGS=$save_CPPFLAGS
 AC_SUBST([X11_LIBS])

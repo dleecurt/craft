@@ -20,11 +20,11 @@ system-wide.
 
 ## Building
 
-You need a C++ compiler, the Xlib and zlib development files, autoconf and
-automake.
+You need a C++ compiler, the Xlib, XRender and zlib development files,
+autoconf and automake.
 On Debian or Ubuntu:
 
-    sudo apt install build-essential autoconf automake libx11-dev zlib1g-dev
+    sudo apt install build-essential autoconf automake libx11-dev libxrender-dev zlib1g-dev
 
 Then:
 
@@ -60,6 +60,24 @@ Craft keeps an off-screen copy of every window and repaints from it, so
 windows redraw correctly after being covered or minimised, with or
 without X backing store. (The original relied on backing store, which
 most X servers now leave off.)
+
+### Zoom
+
+The game screen is 1016×740 pixels, which is small on today's screens.
+Craft can enlarge every window by 1.25×, 1.5×, 2× or 3×. Whole-number
+steps keep the pixels sharp; the others are smoothed. Nothing else
+changes: the game draws at its original size and the X server (XRender)
+enlarges the picture.
+
+By default the zoom is **auto**: the largest step that fits the screen
+(1.25× on 1920×1080, 1.5× on 2560×1440, 2× on 4K). To change it, use
+the **-** and **+** buttons next to *zoom* on the start menu's
+**Details** page. The menu resizes at once, and your choice is kept in
+`~/.config/craft/settings` (or `$XDG_CONFIG_HOME/craft/settings`). Going
+below 1× or above 3× returns to auto.
+
+For one run only, use `craft -scale N` with any value from 1 to 4, for
+example `craft -scale 1` for the original size.
 
 ## Splash and credits screens
 
@@ -200,6 +218,10 @@ the full history is in git. In summary:
   of only the current directory
 - fixes for current compilers, all compiler warnings, and a number of
   bugs (crashes, uninitialised data, buffer overflows); see the git log
+- windows can be zoomed for large screens (XRender), and repaint
+  themselves after being covered
+- new: splash and credits screens, a pause button, saving and
+  restoring games, and an adjustable game pace
 - the art tools are installed as `craft-cmedit`, `craft-mirror` and so
   on, so they don't clash with standard programs such as `split`
 - test programs, unused modules, editor backups and two third-party

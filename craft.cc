@@ -3,7 +3,8 @@
  * as clause 3 of its license requires (see LICENSE):
  *   2018-2019  Quipyowert2/craft: fixes for modern compilers
  *   2026       dleecurt/craft: converted from craft.hc (hcc refinements
- *              expanded) to plain C++; compiler, warning and bug fixes
+ *              expanded) to plain C++; compiler, warning and bug fixes;
+ *              new features (see README), including zoom
  * Exact changes: git log -- craft.cc craft.hc
  */
 
@@ -23,6 +24,7 @@
 #include "option_menu.h"
 #include "xtimer.h"
 #include "screens.h"
+#include "zoom.h"
 #include "savegame.h"
 
 #define min_cycle_time 50 /* pause loop poll interval, ms */
@@ -955,9 +957,47 @@ void set_initial_objects()
    };
 }
 
-int main()
+static void usage(FILE *f)
+{
+   fprintf(f, "usage: craft [-scale N]\n"
+              "  -scale N   zoom the game N times (1 to 4, e.g. 1.5) for this run only;\n"
+              "             without it, the zoom set on the start menu's Details page\n"
+              "             is used (by default chosen from the screen size)\n");
+}
+
+int main(int argc, char **argv)
 {
    double act_speed;
+
+   for (int i = 1; i < argc; i++)
+   { // read_arguments
+      if ((strcmp(argv[i], "-scale") == 0 || strcmp(argv[i], "--scale") == 0) && i + 1 < argc)
+      {
+         if (!zoom_override(atof(argv[++i])))
+         {
+            fprintf(stderr, "craft: -scale must be between 1 and 4\n");
+            exit(2);
+         }
+      }
+      else if (strncmp(argv[i], "--scale=", 8) == 0)
+      {
+         if (!zoom_override(atof(argv[i] + 8)))
+         {
+            fprintf(stderr, "craft: -scale must be between 1 and 4\n");
+            exit(2);
+         }
+      }
+      else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)
+      {
+         usage(stdout);
+         exit(0);
+      }
+      else
+      {
+         usage(stderr);
+         exit(2);
+      }
+   }
 
    { // start_message
       printf("CRAFT Version 3.5 (http://set.gmd.de/~hua) started\n");

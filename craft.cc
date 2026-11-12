@@ -25,7 +25,7 @@
 #include "screens.h"
 #include "savegame.h"
 
-#define min_cycle_time 50
+#define min_cycle_time 50 /* pause loop poll interval, ms */
 
 double robo_power;
 double robo_agress;
@@ -92,6 +92,25 @@ char p_name[max_players][128];
 int num_paused;
 
 int ticker;
+
+/* Game steps per second. The original slept for 0.5 ms per step (a units
+   bug), which on 1997 kernels meant roughly 10 ms, so it ran at about
+   30-60 steps per second on the hardware of the time. */
+int game_pace = 40;
+
+static const int game_paces[] = { 10, 20, 30, 40, 50, 60, 80, 100 };
+#define num_game_paces (int)(sizeof(game_paces) / sizeof(game_paces[0]))
+
+int step_game_pace(int direction)
+{
+   int i = 0;
+
+   while (i < num_game_paces - 1 && game_paces[i] < game_pace)
+      i++;
+   i = i_bound(0, i + direction, num_game_paces - 1);
+   game_pace = game_paces[i];
+   return game_pace;
+}
 
 bool is_self;
 bool is_suny;
@@ -1334,9 +1353,9 @@ int main()
                }
          }
          { // perhaps_delay
-            int rest_dt = (int)(min_cycle_time - (x_sys_time() - cycle_start_time));
+            int rest_dt = (int)(1000 / game_pace - (x_sys_time() - cycle_start_time));
 
-            if (rest_dt > 10)
+            if (rest_dt > 0)
             {
                delay(rest_dt);
             }

@@ -155,6 +155,7 @@ class player
    void deactivate          ();
      
    void initial_display     (); 
+   void show_pace           ();
    
    void edit                ();
 

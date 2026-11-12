@@ -240,8 +240,25 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
    }
 }
 
+/* "pace 40/s" above the save button; changed with + and - */
+void player::show_pace()
+{
+   char text[32];
+
+   if (is_robot)
+      return;
+   snprintf(text, sizeof(text), "pace %3d/s  (+/-)", game_pace);
+   w_status->set_background(gray80);
+   w_status->set_color(gray80);
+   w_status->fill(18, 578, 180, 22);
+   w_status->set_color(black);
+   w_status->write(20, 594, text);
+   w_status->tick();
+}
+
 void player::initial_display()
 {
+   show_pace();
    show();
    show_overview();
    show_overview_frame(true);
@@ -1691,6 +1708,16 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
                      else if (num_marked[act] > 1)
                         adjust_cmds();
                   }
+               };
+               break;
+               case '+':
+               case '=':
+               case '-':
+               { // change_game_pace
+                  step_game_pace(cc[0] == '-' ? -1 : 1);
+                  for (int p = 0; p < max_players; p++)
+                     if (::active[p] && !players[p]->is_robot)
+                        players[p]->show_pace();
                };
                break;
                default:

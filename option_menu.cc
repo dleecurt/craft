@@ -329,6 +329,20 @@ void player_menu(int act_menu, int &tic)
    }
 }
 
+/* "pace NN steps/s" between the pace buttons on the Details page */
+void show_pace()
+{
+   char text[64];
+
+   snprintf(text, sizeof(text), " pace %3d steps/s ", game_pace);
+   w->set_background(gray80);
+   w->set_color(gray80);
+   w->fill(92, 268, 140, 26);
+   w->set_color(black);
+   w->write(98, 286, text);
+   w->tick();
+}
+
 void details_menu(int /* act_menu */, double &g_speed, int &tic)
 {
    dial *d_min_land_dx;
@@ -336,6 +350,8 @@ void details_menu(int /* act_menu */, double &g_speed, int &tic)
    dial *d_max_land_dx;
    dial *d_max_land_dy;
    scroller *s_act_speed;
+   button *b_pace_down;
+   button *b_pace_up;
 
    {    // init
       { // show_pic
@@ -360,6 +376,9 @@ void details_menu(int /* act_menu */, double &g_speed, int &tic)
              = new dial(w, "", 0, 200, 110, 50, min_rland_dy, 400, 10, false, 40, false, 50, false);
          d_max_land_dy
              = new dial(w, "", 0, 200, 130, 80, max_rland_dy, 400, 10, false, 40, false, 50, false);
+         b_pace_down = new button(w, " - ", 60, 268);
+         b_pace_up = new button(w, " + ", 236, 268);
+         show_pace();
       }
    }
    { // session
@@ -392,6 +411,16 @@ void details_menu(int /* act_menu */, double &g_speed, int &tic)
                d_min_land_dy->set(min_rland_dy);
             }
             s_act_speed->eval(act_speed);
+            if (b_pace_down->eval())
+            {
+               step_game_pace(-1);
+               show_pace();
+            }
+            if (b_pace_up->eval())
+            {
+               step_game_pace(1);
+               show_pace();
+            }
             switch (act_speed)
             {
             case 1:
@@ -421,6 +450,8 @@ void details_menu(int /* act_menu */, double &g_speed, int &tic)
       delete (d_max_land_dx);
       delete (d_max_land_dy);
       delete (s_act_speed);
+      delete (b_pace_down);
+      delete (b_pace_up);
    }
 }
 

@@ -7,7 +7,6 @@
  * Exact changes: git log -- win.cc win.hc
  */
 
-
 /*======================================================================*/
 /*= CHANGES AND UPDATES                                                =*/
 /*======================================================================*/
@@ -346,6 +345,68 @@ char win::fix_dir[128];
 bool win::fix_initialized = false;
 
 /*----------------------------------------------------------------------*/
+/* Off-screen buffer                                                    */
+/*                                                                      */
+/* Craft used to ask the X server to keep window contents (backing      */
+/* store) and ignored Expose events. Most X servers today don't keep    */
+/* them, so covered or minimised windows came back white. Every window  */
+/* now also draws into an off-screen pixmap, and exposed parts are      */
+/* copied back from it.                                                 */
+/*----------------------------------------------------------------------*/
+
+win *win::all_wins[256];
+int win::num_wins = 0;
+
+void win::init_buffer(int buffer_dx, int buffer_dy)
+{
+   mybuffer = XCreatePixmap(mydisplay, mywindow, i_max(1, buffer_dx), i_max(1, buffer_dy),
+                            DefaultDepth(mydisplay, myscreen));
+   mycopy_gc = XCreateGC(mydisplay, mywindow, 0, 0);
+   XSetGraphicsExposures(mydisplay, mycopy_gc, False);
+   XSetForeground(mydisplay, mycopy_gc, mybackground);
+   XFillRectangle(mydisplay, mybuffer, mycopy_gc, 0, 0, i_max(1, buffer_dx), i_max(1, buffer_dy));
+   if (num_wins < 256)
+      all_wins[num_wins++] = this;
+}
+
+void win::free_buffer()
+{
+   for (int i = 0; i < num_wins; i++)
+      if (all_wins[i] == this)
+      {
+         all_wins[i] = all_wins[--num_wins];
+         break;
+      }
+   if (mybuffer != None)
+   {
+      XFreePixmap(mydisplay, mybuffer);
+      XFreeGC(mydisplay, mycopy_gc);
+   }
+   mybuffer = None;
+}
+
+void win::repaint(int x, int y, int dx, int dy)
+{
+   if (mybuffer != None)
+      XCopyArea(mydisplay, mybuffer, mywindow, mycopy_gc, x, y, dx, dy, x, y);
+}
+
+/* Repaint the exposed parts of every window, including windows the game
+   is not polling at the moment. */
+void win::repaint_exposed()
+{
+   XEvent ev;
+
+   for (int i = 0; i < num_wins; i++)
+   {
+      win *w = all_wins[i];
+
+      while (XCheckTypedWindowEvent(w->mydisplay, w->mywindow, Expose, &ev))
+         w->repaint(ev.xexpose.x, ev.xexpose.y, ev.xexpose.width, ev.xexpose.height);
+   }
+}
+
+/*----------------------------------------------------------------------*/
 /* CLASS win (funktions)                                                */
 /*----------------------------------------------------------------------*/
 
@@ -359,6 +420,7 @@ win::win(const char title[], const char host[], int x, int y, int dx, int dy, bo
       strcpy(fix_name, ".winfix");
       strcpy(fix_dir, "");
    }
+   mybuffer = None;
    is_enable = enable;
    if (is_enable)
    { // perform_open
@@ -492,6 +554,11 @@ win::win(const char title[], const char host[], int x, int y, int dx, int dy, bo
          mygc = XCreateGC(mydisplay, mywindow, 0, 0);
          XSetBackground(mydisplay, mygc, mybackground);
          XSetForeground(mydisplay, mygc, myforeground);
+         if (resize_enable)
+            init_buffer(i_max(myhint->width, DisplayWidth(mydisplay, myscreen)),
+                        i_max(myhint->height, DisplayHeight(mydisplay, myscreen)));
+         else
+            init_buffer(myhint->width, myhint->height);
          XSelectInput(mydisplay, mywindow,
                       PropertyChangeMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask
                           | KeyPressMask | KeyReleaseMask | ExposureMask | EnterWindowMask
@@ -523,6 +590,7 @@ win::win(win *parent, const char title[], char host[], int x, int y, int dx, int
       strcpy(fix_name, ".winfix");
       strcpy(fix_dir, "");
    }
+   mybuffer = None;
    is_enable = enable;
    if (is_enable)
    { // perform_open
@@ -649,6 +717,11 @@ win::win(win *parent, const char title[], char host[], int x, int y, int dx, int
          mygc = XCreateGC(mydisplay, mywindow, 0, 0);
          XSetBackground(mydisplay, mygc, mybackground);
          XSetForeground(mydisplay, mygc, myforeground);
+         if (resize_enable)
+            init_buffer(i_max(myhint->width, DisplayWidth(mydisplay, myscreen)),
+                        i_max(myhint->height, DisplayHeight(mydisplay, myscreen)));
+         else
+            init_buffer(myhint->width, myhint->height);
          XSelectInput(mydisplay, mywindow,
                       PropertyChangeMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask
                           | KeyPressMask | KeyReleaseMask | ExposureMask | EnterWindowMask
@@ -675,6 +748,7 @@ win::win(char title[])
    mydisplay = XOpenDisplay("");
    myscreen = DefaultScreen(mydisplay);
    cmap = DefaultColormap(mydisplay, myscreen);
+   mybuffer = None;
    mywindow = grab(mydisplay, RootWindow(mydisplay, myscreen), title);
    is_enable = (mywindow != 0);
    if (is_enable)
@@ -709,6 +783,7 @@ Window win::grab(Display *dsp, Window wnd, char name[])
 
 win::~win()
 {
+   free_buffer();
    if (is_alien)
    { // close_alien
       if (is_enable)
@@ -724,6 +799,16 @@ win::~win()
       XFreeGC(mydisplay, mygc);
       XFree(myhint);
       XDestroyWindow(mydisplay, mywindow);
+      { // forget_windows_on_this_display
+         /* Child windows that were never deleted share this connection;
+            closing it frees their pixmaps on the server side. */
+         for (int i = num_wins - 1; i >= 0; i--)
+            if (all_wins[i]->mydisplay == mydisplay)
+            {
+               all_wins[i]->mybuffer = None;
+               all_wins[i] = all_wins[--num_wins];
+            }
+      }
       XCloseDisplay(mydisplay);
    }
 }
@@ -822,6 +907,7 @@ void win::tick(bool pause)
    bool first = true;
    XEvent myevent;
 
+   repaint_exposed();
    if (is_enable)
    { // handle_tick
       bool any_event;
@@ -838,7 +924,9 @@ void win::tick(bool pause)
          first = false;
          switch (myevent.type)
          {
-         case Expose: /*jupp di dei*/
+         case Expose:
+            repaint(myevent.xexpose.x, myevent.xexpose.y, myevent.xexpose.width,
+                    myevent.xexpose.height);
             break;
          case PropertyNotify:
             break;
@@ -1280,6 +1368,8 @@ void win::pixel(int x, int y)
    if (is_enable)
    { // perform_draw
       XDrawPoint(mydisplay, mywindow, mygc, x, y);
+      if (mybuffer != None)
+         XDrawPoint(mydisplay, mybuffer, mygc, x, y);
    }
 }
 
@@ -1296,6 +1386,8 @@ void win::draw(polyline *p)
    if (is_enable)
    { // perform_draw
       XDrawLines(mydisplay, mywindow, mygc, p->p, p->n, CoordModeOrigin);
+      if (mybuffer != None)
+         XDrawLines(mydisplay, mybuffer, mygc, p->p, p->n, CoordModeOrigin);
    }
 }
 
@@ -1304,6 +1396,8 @@ void win::line(int x1, int y1, int x2, int y2)
    if (is_enable)
    { // perform_line
       XDrawLine(mydisplay, mywindow, mygc, x1, y1, x2, y2);
+      if (mybuffer != None)
+         XDrawLine(mydisplay, mybuffer, mygc, x1, y1, x2, y2);
    }
 }
 
@@ -1317,7 +1411,13 @@ void win::box(int x1, int y1, int x2, int y2)
 
 void win::move(int x, int y, int x1, int y1, int dx, int dy)
 {
-   XCopyArea(mydisplay, mywindow, mywindow, mygc, x, y, dx, dy, x1, y1);
+   if (mybuffer != None)
+   {
+      XCopyArea(mydisplay, mybuffer, mybuffer, mygc, x, y, dx, dy, x1, y1);
+      XCopyArea(mydisplay, mybuffer, mywindow, mygc, x1, y1, dx, dy, x1, y1);
+   }
+   else
+      XCopyArea(mydisplay, mywindow, mywindow, mygc, x, y, dx, dy, x1, y1);
 }
 
 void win::load_map(char name[], Pixmap &m, int &dx, int &dy)
@@ -1345,7 +1445,8 @@ void win::store_map(char name[], int x, int y, int dx, int dy)
 
    p = XCreatePixmap(mydisplay, mywindow, dx, dy, 8);
    function(GXcopy);
-   XCopyArea(mydisplay, mywindow, p, mygc, x, y, dx, dy, 0, 0);
+   XCopyArea(mydisplay, mybuffer != None ? (Drawable)mybuffer : (Drawable)mywindow, p, mygc, x, y,
+             dx, dy, 0, 0);
    XWriteBitmapFile(mydisplay, name, p, dx, dy, 0, 0);
 }
 
@@ -1353,7 +1454,8 @@ void win::store_map(Pixmap &p, int x, int y, int dx, int dy)
 {
    p = XCreatePixmap(mydisplay, mywindow, dx, dy, DefaultDepth(mydisplay, myscreen));
    function(GXcopy);
-   XCopyArea(mydisplay, mywindow, p, mygc, x, y, dx, dy, 0, 0);
+   XCopyArea(mydisplay, mybuffer != None ? (Drawable)mybuffer : (Drawable)mywindow, p, mygc, x, y,
+             dx, dy, 0, 0);
 }
 
 void win::store_map(Pixmap &p, int x, int y, int dx, int dy, Pixmap mask)
@@ -1362,7 +1464,8 @@ void win::store_map(Pixmap &p, int x, int y, int dx, int dy, Pixmap mask)
    function(GXcopy);
    XSetClipMask(mydisplay, mygc, mask);
    XSetClipOrigin(mydisplay, mygc, 0, 0);
-   XCopyArea(mydisplay, mywindow, p, mygc, x, y, dx, dy, 0, 0);
+   XCopyArea(mydisplay, mybuffer != None ? (Drawable)mybuffer : (Drawable)mywindow, p, mygc, x, y,
+             dx, dy, 0, 0);
    XSetClipMask(mydisplay, mygc, None);
 }
 
@@ -1396,6 +1499,8 @@ void win::show_map(int x, int y, char name[])
       }
       { // show_pixmap
          XCopyPlane(mydisplay, p, mywindow, mygc, 0, 0, dx, dy, x, y, 1L);
+         if (mybuffer != None)
+            XCopyPlane(mydisplay, p, mybuffer, mygc, 0, 0, dx, dy, x, y, 1L);
       }
    }
 }
@@ -1411,6 +1516,8 @@ void win::show_map(int x, int y, int src_x, int src_y, Pixmap m, int dx, int dy)
    {    // perform_show
       { // show_pixmap
          XCopyArea(mydisplay, m, mywindow, mygc, src_x, src_y, dx, dy, x, y);
+         if (mybuffer != None)
+            XCopyArea(mydisplay, m, mybuffer, mygc, src_x, src_y, dx, dy, x, y);
       }
    }
 }
@@ -1462,6 +1569,8 @@ void win::show_map(int x, int y, Pixmap m, int dx, int dy, Pixmap mask, int clip
       XSetClipMask(mydisplay, mygc, mask);
       XSetClipOrigin(mydisplay, mygc, x, y);
       XCopyArea(mydisplay, m, mywindow, mygc, src_x, src_y, dest_dx, dest_dy, dest_x, dest_y);
+      if (mybuffer != None)
+         XCopyArea(mydisplay, m, mybuffer, mygc, src_x, src_y, dest_dx, dest_dy, dest_x, dest_y);
       XSetClipMask(mydisplay, mygc, None);
    }
 }
@@ -1475,6 +1584,8 @@ void win::show_map(Pixmap m, Pixmap mask, int x_source, int y_source, int x_scre
       XSetClipMask(mydisplay, mygc, mask);
       XSetClipOrigin(mydisplay, mygc, x_mask, y_mask);
       XCopyArea(mydisplay, m, mywindow, mygc, x_source, y_source, dx, dy, x_screen, y_screen);
+      if (mybuffer != None)
+         XCopyArea(mydisplay, m, mybuffer, mygc, x_source, y_source, dx, dy, x_screen, y_screen);
       XSetClipMask(mydisplay, mygc, None);
    }
 }
@@ -1494,6 +1605,8 @@ void win::fill(polyline *p)
    if (is_enable)
    { // perform_fill
       XFillPolygon(mydisplay, mywindow, mygc, p->p, p->n, Convex, CoordModeOrigin);
+      if (mybuffer != None)
+         XFillPolygon(mydisplay, mybuffer, mygc, p->p, p->n, Convex, CoordModeOrigin);
    }
 }
 
@@ -1502,6 +1615,8 @@ void win::fill(int x1, int y1, int dx, int dy)
    if (is_enable)
    { // perform_fill
       XFillRectangle(mydisplay, mywindow, mygc, x1, y1, dx, dy);
+      if (mybuffer != None)
+         XFillRectangle(mydisplay, mybuffer, mygc, x1, y1, dx, dy);
    }
 }
 
@@ -1517,7 +1632,13 @@ void win::shift(int x1, int y1, int x2, int y2, int dx, int dy)
 {
    if (is_enable)
    { // perform_shift
-      XCopyArea(mydisplay, mywindow, mywindow, mygc, x1, y1, dx, dy, x2, y2);
+      if (mybuffer != None)
+      {
+         XCopyArea(mydisplay, mybuffer, mybuffer, mygc, x1, y1, dx, dy, x2, y2);
+         XCopyArea(mydisplay, mybuffer, mywindow, mygc, x2, y2, dx, dy, x2, y2);
+      }
+      else
+         XCopyArea(mydisplay, mywindow, mywindow, mygc, x1, y1, dx, dy, x2, y2);
    }
 }
 
@@ -1566,6 +1687,8 @@ void win::write(int x, int y, const char string[])
    if (is_enable)
    { // perform_write
       XDrawImageString(mydisplay, mywindow, mygc, x, y, string, strlen(string));
+      if (mybuffer != None)
+         XDrawImageString(mydisplay, mybuffer, mygc, x, y, string, strlen(string));
    }
 }
 
@@ -1840,13 +1963,16 @@ void win::get_image(XImage *&i, int x, int y, int dx, int dy)
       tick();
       xsync();
    }
-   i = XGetImage(mydisplay, mywindow, x, y, dx, dy, AllPlanes, XYPixmap);
+   i = XGetImage(mydisplay, mybuffer != None ? (Drawable)mybuffer : (Drawable)mywindow, x, y, dx,
+                 dy, AllPlanes, XYPixmap);
    is_last_pixel = false;
 }
 
 void win::put_image(XImage *i, int x, int y, int dx, int dy)
 {
    XPutImage(mydisplay, mywindow, mygc, i, 0, 0, x, y, dx, dy);
+   if (mybuffer != None)
+      XPutImage(mydisplay, mybuffer, mygc, i, 0, 0, x, y, dx, dy);
 }
 
 #undef red

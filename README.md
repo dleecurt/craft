@@ -55,12 +55,10 @@ this order:
 2. the current directory, if it contains the data (a source checkout)
 3. the install location, `PREFIX/share/craft`
 
-If game windows don't redraw after another window covers them, your X
-server has *backing store* turned off: Craft asks X to keep window
-contents for it (the original author noted this). With Xorg it can usually be
-enabled with `Option "BackingStore" "true"` in the `Device` section of
-`xorg.conf`, or by running a compositing
-window manager.
+Craft keeps an off-screen copy of every window and repaints from it, so
+windows redraw correctly after being covered or minimised, with or
+without X backing store. (The original relied on backing store, which
+most X servers now leave off.)
 
 ## Splash and credits screens
 

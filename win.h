@@ -191,6 +191,8 @@ class win
      Colormap      cmap;
      Display       *mydisplay;
      Window        mywindow;
+     Pixmap        mybuffer;     /* off-screen copy used to repaint after an Expose */
+     GC            mycopy_gc;    /* plain GC (GXcopy, no clip) for repainting */
      int           myscreen;
      GC            mygc;		
      unsigned long myforeground;
@@ -221,6 +223,12 @@ class win
      static char   fix_name [128];
      static char   fix_dir  [128];
      static bool   fix_initialized;
+     static win    *all_wins [256];
+     static int    num_wins;
+     static void   repaint_exposed ();
+     void          init_buffer     (int buffer_dx, int buffer_dy);
+     void          free_buffer     ();
+     void          repaint         (int x, int y, int dx, int dy);
 
      int           colors  [max_colors];
      int           color_r [max_colors];

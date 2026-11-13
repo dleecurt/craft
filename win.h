@@ -255,8 +255,6 @@ class win
      int           zoom_out      (int v);
      void          set_scale     (double s);
      static void   present_all   ();
-     void          queue_mouse   (int type, int x, int y);
-     void          drop_mouse    (int i);
      static void   rezoom_all    (double s);
 
      int           colors  [max_colors];
@@ -332,6 +330,8 @@ class win
      bool   is_mouse         (int &xe, int &ye, int &button);
      void   mark_mouse       ();
      void   scratch_mouse    ();
+     void   queue_mouse      (int type, int x, int y);
+     void   drop_mouse       (int i);
      void   clear            ();
      void   set_font         (const char name []);
      void   text_size        (const char string [], int &dx, int &dy);

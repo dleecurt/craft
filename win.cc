@@ -711,6 +711,7 @@ win::win(const char title[], const char host[], int x, int y, int dx, int dy, bo
          cmap = DefaultColormap(mydisplay, myscreen);
          press_cnt = 0;
          keycount = 0;
+         inbuffer[0] = 0;
          w_dx = dx;
          w_dy = dy;
          myhint = XAllocSizeHints();
@@ -895,6 +896,7 @@ win::win(win *parent, const char title[], char host[], int x, int y, int dx, int
          cmap = parent->cmap;
          press_cnt = 0;
          keycount = 0;
+         inbuffer[0] = 0;
          w_dx = dx;
          w_dy = dy;
          myhint = XAllocSizeHints();
@@ -1210,54 +1212,23 @@ void win::tick(bool pause)
          case ResizeRequest:
             break;
          case ButtonRelease:
-         { // handle_mouse_button_release
-            switch (((XButtonReleasedEvent *)&myevent)->button)
-            {
-            case Button1:
-               mouse_event[num_mouse_events] = button1release;
-               mouse_press[0] = false;
-               break;
-            case Button2:
-               mouse_event[num_mouse_events] = button2release;
-               mouse_press[1] = false;
-               break;
-            case Button3:
-               mouse_event[num_mouse_events] = button3release;
-               mouse_press[2] = false;
-               break;
-            }
-            mouse_inside = true;
-            mouse_x = zoom_out(myevent.xbutton.x);
-            mouse_y = zoom_out(myevent.xbutton.y);
-            mouse_ex[num_mouse_events] = mouse_x;
-            mouse_ey[num_mouse_events] = mouse_y;
-            num_mouse_events = i_min(max_mouse_events - 1, num_mouse_events + 1);
-         };
-         break;
          case ButtonPress:
-         { // handle_mouse_button_press
-            switch (((XButtonPressedEvent *)&myevent)->button)
+         { // handle_mouse_button
+            /* Only buttons 1 to 3. The scroll wheel (4, 5) and sideways
+               scrolling (6, 7) used to be queued with a left-over event
+               type and could block the buttons of a whole panel. */
+            int no = (int)myevent.xbutton.button;
+
+            if (no >= Button1 && no <= Button3)
             {
-            case Button1:
-               mouse_event[num_mouse_events] = button1press;
-               mouse_press[0] = true;
-               break;
-            case Button2:
-               mouse_event[num_mouse_events] = button2press;
-               mouse_press[1] = true;
-               break;
-            case Button3:
-               mouse_event[num_mouse_events] = button3press;
-               mouse_press[2] = true;
-               break;
+               bool press = myevent.type == ButtonPress;
+
+               mouse_press[no - Button1] = press;
+               mouse_inside = true;
+               mouse_x = zoom_out(myevent.xbutton.x);
+               mouse_y = zoom_out(myevent.xbutton.y);
+               queue_mouse(press ? no - Button1 + 1 : -(no - Button1 + 1), mouse_x, mouse_y);
             }
-            mouse_inside = true;
-            mouse_x = zoom_out(myevent.xbutton.x);
-            mouse_y = zoom_out(myevent.xbutton.y);
-            mouse_ex[num_mouse_events] = mouse_x;
-            mouse_ey[num_mouse_events] = mouse_y;
-            mouse_eid[num_mouse_events] = event_id++;
-            num_mouse_events = i_min(max_mouse_events - 1, num_mouse_events + 1);
          };
          break;
          case GraphicsExpose: /*jupp di dei*/
@@ -1267,25 +1238,25 @@ void win::tick(bool pause)
             break;
          case KeyPress:
          { // handle_press_key
-            char instring[10];
+            /* Only keys that type a character are queued. Keys like Shift
+               used to queue whatever was in an uninitialised buffer. */
+            char instring[10] = { 0 };
+            KeySym mykey;
+            int len;
 
             press_cnt++;
-            { // decode_input
-               KeySym mykey;
-
-               XLookupString((XKeyEvent *)&myevent, instring, 10, &mykey, 0);
-               act_key = ((XButtonPressedEvent *)&myevent)->button;
-               if (XKeysymToString(mykey))
-                  strcpy(cntlbuffer[keycount], XKeysymToString(mykey));
-            }
+            len = XLookupString((XKeyEvent *)&myevent, instring, sizeof(instring) - 1, &mykey, 0);
+            act_key = (int)myevent.xkey.keycode;
+            if (len > 0 && instring[0] != 0 && keycount < keybuf_size - 1)
             { // push_to_queue
+               const char *name = XKeysymToString(mykey);
+
+               snprintf(cntlbuffer[keycount], sizeof(cntlbuffer[keycount]), "%s",
+                        name != NULL ? name : "");
                inbuffer[keycount] = instring[0];
                keybuffer[keycount] = act_key;
-               keycount = i_min(keybuf_size, keycount + 1);
-            }
-            { // perhaps_skip_shift
-               if (act_key == 106)
-                  keycount--;
+               keycount++;
+               inbuffer[keycount] = 0;
             }
          };
          break;
@@ -1400,15 +1371,47 @@ bool win::on()
    return mouse_inside;
 }
 
+/* Add a mouse event (button1press ... button3release) to the queue. When
+   the queue is full the oldest event goes, so the newest click is never
+   the one lost. Every event gets its own id (mark_mouse). */
+void win::queue_mouse(int type, int x, int y)
+{
+   if (num_mouse_events >= max_mouse_events)
+      drop_mouse(0);
+   mouse_event[num_mouse_events] = type;
+   mouse_ex[num_mouse_events] = x;
+   mouse_ey[num_mouse_events] = y;
+   mouse_eid[num_mouse_events] = event_id++;
+   num_mouse_events++;
+}
+
+/* Remove queued event i, keeping the order of the rest. */
+void win::drop_mouse(int i)
+{
+   for (int k = i; k < num_mouse_events - 1; k++)
+   {
+      mouse_event[k] = mouse_event[k + 1];
+      mouse_ex[k] = mouse_ex[k + 1];
+      mouse_ey[k] = mouse_ey[k + 1];
+      mouse_eid[k] = mouse_eid[k + 1];
+   }
+   num_mouse_events--;
+}
+
 void win::mark_mouse()
 {
    event_mark = event_id;
 }
 
+/* Throw away every event that was already queued at the last mark_mouse
+   and that nothing has taken since: nobody wants it. (This used to look
+   only at the newest event, so an old one at the front could stay and
+   block every button of the window.) */
 void win::scratch_mouse()
 {
-   while (num_mouse_events > 0 && mouse_eid[num_mouse_events - 1] < event_mark)
-      num_mouse_events--;
+   for (int i = num_mouse_events - 1; i >= 0; i--)
+      if (mouse_eid[i] < event_mark)
+         drop_mouse(i);
 }
 
 bool win::mouse_is_pressed(int button)
@@ -1431,20 +1434,12 @@ bool win::mouse(int &x, int &y, int &xe, int &ye, int &button)
    { // handle_mouse
       if (num_mouse_events > 0)
       { // grab_event
-         num_mouse_events--;
          x = mouse_x;
          y = mouse_y;
          xe = mouse_ex[0];
          ye = mouse_ey[0];
          button = mouse_event[0];
-         { // shift_buffer
-            for (int i = 0; i < max_mouse_events - 1; i++)
-            {
-               mouse_ex[i] = mouse_ex[i + 1];
-               mouse_ey[i] = mouse_ey[i + 1];
-               mouse_event[i] = mouse_event[i + 1];
-            }
-         }
+         drop_mouse(0);
          return true;
       }
       else

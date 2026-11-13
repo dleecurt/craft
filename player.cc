@@ -241,6 +241,21 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
 }
 
 /* "pace 40/s" above the save button; changed with + and - */
+/* Buttons act on a press and never on a release, but they only look at
+   the first queued event. A release with no button under it (the mouse
+   was let go beside the button, or the buttons changed between press and
+   release) therefore blocked every button of the panel until it was
+   cleared, and the clicks behind it were lost. Drop such releases. */
+static void drop_stray_releases(win *w)
+{
+   int xe;
+   int ye;
+   int b;
+
+   while (w->is_mouse(xe, ye, b) && b < 0)
+      w->mouse(xe, ye, b);
+}
+
 void player::show_pace()
 {
    char text[32];
@@ -1877,7 +1892,10 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
                break;
                }
             }
-            else if (w_status->is_mouse(d, d, d))
+            drop_stray_releases(w_status);
+            /* (this used to be an "else" of the key handling above, so the
+               buttons were skipped in any step in which a key came in) */
+            if (w_status->is_mouse(d, d, d))
             { // check_buttons
                for (int c = 0; c < num_cmds; c++)
                { // check_button
@@ -2337,6 +2355,7 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
       { // handle_pause
          w_pause->mark_mouse();
          w_pause->tick();
+         drop_stray_releases(w_pause);
          if (p_button[p_no]->eval() || b_pause->eval())
          {
             paused[p_no] = true;
@@ -2344,6 +2363,7 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
          }
          w_pause->scratch_mouse();
       }
+      drop_stray_releases(w_unit);
       if (w_unit->is_mouse(d, d, d))
       { // handle_units
          int i;

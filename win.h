@@ -255,6 +255,8 @@ class win
      int           zoom_out      (int v);
      void          set_scale     (double s);
      static void   present_all   ();
+     /* Called whenever the game polls for events (sound keeps going). */
+     static void (*idle_hook) ();
      static void   rezoom_all    (double s);
 
      int           colors  [max_colors];

@@ -8,6 +8,7 @@
  */
 
 #include "player.h"
+#include "sound.h"
 #include "savegame.h"
 #include "masks.h"
 #include "object_handler.h"
@@ -241,13 +242,15 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
 }
 
 /* "pace 40/s" above the save button; changed with + and - */
+static bool sound_muted = false; /* Shift+M; shown on the pace line */
+
 void player::show_pace()
 {
    char text[32];
 
    if (is_robot)
       return;
-   snprintf(text, sizeof(text), "pace %3d/s  (+/-)", game_pace);
+   snprintf(text, sizeof(text), sound_muted ? "pace %3d/s  muted" : "pace %3d/s  (+/-)", game_pace);
    w_status->set_background(gray80);
    w_status->set_color(gray80);
    w_status->fill(18, 578, 180, 22);
@@ -1710,6 +1713,14 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
                   }
                };
                break;
+               case 'M':
+               { // toggle_mute (Shift+M; plain m is Move)
+                  sound_muted = sound_toggle_mute();
+                  for (int p = 0; p < max_players; p++)
+                     if (::active[p] && !players[p]->is_robot)
+                        players[p]->show_pace();
+               };
+               break;
                case '+':
                case '=':
                case '-':
@@ -2601,7 +2612,7 @@ void player::clear_status()
          num_cmds = 0;
       }
       w_status->set_color(gray80);
-      w_status->fill(10, 10, 180, 630);
+      w_status->fill(10, 10, 180, 560); /* stop above the pace line and save button */
       if (is_dial)
       { // close_dial
          delete (m_limit);

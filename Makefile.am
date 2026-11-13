@@ -2,13 +2,18 @@
 
 AM_CPPFLAGS = $(X_CFLAGS) -DCRAFT_DATADIR='"$(pkgdatadir)"'
 AM_CXXFLAGS = $(WARN_CXXFLAGS)
-LDADD       = libcraft.a $(X11_LIBS) $(LIBS)
+LDADD       = libcraft.a libcraftaudio.a $(X11_LIBS) $(AUDIO_LIBS) $(LIBS)
 
 # ----------------------------------------------------------------------
 # Shared code: everything except the main programs
 # ----------------------------------------------------------------------
 
-noinst_LIBRARIES = libcraft.a
+noinst_LIBRARIES = libcraft.a libcraftaudio.a
+
+# Bundled audio libraries (third_party/README.md), used unchanged, so
+# their own warnings are not shown.
+libcraftaudio_a_SOURCES = audio_lib.c
+libcraftaudio_a_CFLAGS = -w
 libcraft_a_SOURCES = \
 	building.cc building.h \
 	buttons.cc buttons.h \
@@ -60,6 +65,7 @@ libcraft_a_SOURCES = \
 	xmath.cc xmath.h \
 	xstring.cc xstring.h \
 	zoom.cc zoom.h \
+	settings.cc settings.h \
 	xtimer.cc xtimer.h \
 	bool.h craft.h craft_def.h
 
@@ -92,10 +98,23 @@ craft_shade1_SOURCES   = shade1.cc
 craft_split_SOURCES    = split.cc
 
 # ----------------------------------------------------------------------
-# Data files: pictures, button icons and window defaults
+# Sound effects: "make sounds" rebuilds sounds/*.wav with sfxgen
 # ----------------------------------------------------------------------
 
-data_dirs = hcraft buttons
+EXTRA_PROGRAMS = sfxgen
+sfxgen_SOURCES = sfxgen.cc
+sfxgen_LDADD = -lm
+CLEANFILES = sfxgen$(EXEEXT)
+
+sounds: sfxgen$(EXEEXT)
+	./sfxgen$(EXEEXT) "$(srcdir)/sounds"
+.PHONY: sounds
+
+# ----------------------------------------------------------------------
+# Data files: pictures, button icons, sounds, music and window defaults
+# ----------------------------------------------------------------------
+
+data_dirs = hcraft buttons sounds music
 
 install-data-local:
 	$(MKDIR_P) "$(DESTDIR)$(pkgdatadir)"
@@ -121,7 +140,7 @@ EXTRA_DIST = autogen.sh .clang-format .windefaults.params
 # would otherwise match make's built-in rule for building buttons from
 # buttons.cc.
 dist-hook:
-	for d in $(data_dirs) doc; do \
+	for d in $(data_dirs) doc third_party; do \
 	  cp -pR "$(srcdir)/$$d" "$(distdir)/" || exit 1; \
 	done
 	chmod -R u+w "$(distdir)"

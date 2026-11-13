@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "screens.h"
+#include "sound.h"
 #include "win.h"
 #include "cmap.h"
 #include "masks.h"
@@ -112,6 +113,7 @@ void show_splash()
 
 void show_credits()
 {
+   music_menu();
    static const char *lines[] = { "CRAFT: The Vicious Vikings",
                                   "",
                                   "Original game (version 3.5, 1997)",

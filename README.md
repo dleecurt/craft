@@ -97,6 +97,44 @@ it from a PNG (ImageMagick and the bundled art tools):
 `craft-ppm2cmap` needs a running X display, and the PPM must be the
 plain (ASCII, `P3`) kind, which `-compress none` produces.
 
+## Sound and music
+
+Craft plays sound effects and music through PipeWire, PulseAudio or
+ALSA. The audio library (miniaudio, with stb_vorbis for Ogg) is
+bundled in `third_party/`, so nothing extra needs installing. Without a
+sound device the game runs silently.
+
+**Effects** are heard where they happen: loudest on your screen,
+fainter further away, and panned left or right. Nothing is heard from
+places hidden in the fog, so sound gives nothing away. You hear felling,
+mining, digging and building; swords, bows, catapults and explosions;
+deaths and falling buildings; and, for your own side, a horn when a man
+is trained or a building is finished, a war horn when your men are
+attacked, and a knock when you give an order.
+
+The effects are original sounds made by `sfxgen` (`sfxgen.cc`), one
+recipe per effect; `make sounds` rebuilds `sounds/*.wav`. Any of them
+can be replaced by another WAV file of the same name.
+
+**Music** goes in `music/` (installed with the game) or in
+`~/.local/share/craft/music/` (your own; used first). Ogg Vorbis, MP3,
+FLAC and WAV all work:
+
+| File name | When it plays |
+|---|---|
+| `menu.*` | splash, start menu and credits, looping |
+| `win.*` / `lose.*` | once, when a game is won or lost |
+| anything else | shuffled one after another during a game |
+
+**Controls**: music and effects volume on the start menu's **Details**
+page (kept in `~/.config/craft/settings`), and **Shift+M** to mute or
+unmute during a game (plain **m** is Move). `CRAFT_SOUND=off` turns
+sound off completely.
+
+For testing, `CRAFT_SOUND_DEBUG=1` logs every effect the game asks for
+and whether it was played, and `CRAFT_SOUND_RECORD=file.wav` writes
+what would have been heard to a file instead of the speakers.
+
 ## Playing
 
 The start menu sets up the world (with or without a king, local sight,
@@ -190,7 +228,10 @@ numbered series `NAME.N.cmap`.
   the game's `main`; the tools' `main`s are `cmedit.cc`, `hcomp.cc`,
   `hmedit.cc`, `hmorph.cc`, `mirror.cc`, `ppm2cmap.cc`, `recolor.cc`,
   `shade.cc`, `shade1.cc` and `split.cc`.
-- `hcraft/`, `buttons/`, `.windefaults.params`: game data.
+- `hcraft/`, `buttons/`, `sounds/`, `music/`, `.windefaults.params`:
+  game data. `sfxgen.cc` makes the sounds.
+- `third_party/`: the bundled audio libraries (miniaudio, stb_vorbis),
+  built by `audio_lib.c`.
 - `doc/`: the original web pages (`craft.html` is the manual,
   `craftcc.html` the old build notes) and the original `README`.
 
@@ -228,7 +269,8 @@ the full history is in git. In summary:
 - windows can be zoomed for large screens (XRender), and repaint
   themselves after being covered
 - new: splash and credits screens, a pause button, saving and
-  restoring games, and an adjustable game pace
+  restoring games, an adjustable game pace, and sound effects and music
+  (the original only had an unused `/dev/audio` stub)
 - the art tools are installed as `craft-cmedit`, `craft-mirror` and so
   on, so they don't clash with standard programs such as `split`
 - test programs, unused modules, editor backups and two third-party

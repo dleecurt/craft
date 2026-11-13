@@ -405,6 +405,8 @@ void win::repaint(int x, int y, int dx, int dy)
 /* Repaint the exposed parts of every window, including windows the game
    is not polling at the moment, and show what has been drawn into the
    buffers of zoomed windows since the last call. */
+void (*win::idle_hook)() = NULL;
+
 void win::repaint_exposed()
 {
    XEvent ev;
@@ -420,6 +422,8 @@ void win::repaint_exposed()
          ;
    }
    present_all();
+   if (idle_hook != NULL)
+      idle_hook();
 }
 
 /*----------------------------------------------------------------------*/

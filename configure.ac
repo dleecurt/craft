@@ -5,6 +5,7 @@ AC_CONFIG_SRCDIR([craft.cc])
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([foreign -Wall -Werror subdir-objects])
 
+AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_RANLIB
 AM_PROG_AR
@@ -36,6 +37,17 @@ AC_CHECK_LIB([m], [sqrt])
 dnl zlib, for compressed saved games
 AC_CHECK_HEADER([zlib.h], [], [AC_MSG_ERROR([zlib.h not found (install zlib1g-dev or zlib-devel)])])
 AC_CHECK_LIB([z], [gzopen], [], [AC_MSG_ERROR([libz not found (install zlib1g-dev or zlib-devel)])])
+
+dnl Sound: miniaudio and stb_vorbis are bundled (third_party/); they need
+dnl threads, maths and dlopen, which loads PipeWire/PulseAudio/ALSA at run time.
+save_LIBS=$LIBS
+LIBS=
+AC_SEARCH_LIBS([pthread_create], [pthread])
+AC_SEARCH_LIBS([dlopen], [dl])
+AC_SEARCH_LIBS([sin], [m])
+AUDIO_LIBS=$LIBS
+LIBS=$save_LIBS
+AC_SUBST([AUDIO_LIBS])
 
 dnl Art tools (picture editor, morph editor, converters)
 AC_ARG_ENABLE([tools],

@@ -30,6 +30,21 @@ By default the largest step that fits the screen is used; change it
 with the zoom buttons on the start menu's
 .B Details
 page.
+.PP
+Sound effects and music play through PipeWire, PulseAudio or ALSA.
+Music volume and effects volume are on the start menu's
+.B Details
+page;
+.B Shift+M
+mutes or unmutes during a game. Music files (Ogg, MP3, FLAC or WAV)
+go in
+.IR ~/.local/share/craft/music :
+.I menu.*
+plays on the start menu,
+.I win.*
+and
+.I lose.*
+at the end of a game, and the rest are shuffled during play.
 .SH OPTIONS
 .TP
 .BI \-scale " N"
@@ -51,6 +66,19 @@ If unset,
 .B craft
 uses the current directory when it holds the data, and otherwise the
 installed data directory.
+.TP
+.B CRAFT_SOUND
+Set to
+.B off
+to play without sound.
+.TP
+.B CRAFT_SOUND_DEBUG
+If set, log every sound effect to standard error, with whether it was
+played.
+.TP
+.B CRAFT_SOUND_RECORD
+Write the game's sound to this WAV file instead of playing it (for
+testing).
 .TP
 .B CRAFT_PROFILE
 If set, print step timings to standard error every 200 steps.

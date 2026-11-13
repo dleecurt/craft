@@ -71,6 +71,27 @@ with the source or instructions for getting it (clause 4). In this fork:
   required". It is credited on the credits screen anyway, so its
   source stays traceable.
 
+## Added sounds
+
+- `sounds/*.wav`: original sound effects made for this fork by
+  `sfxgen.cc` (synthesised from oscillators, noise and envelopes; no
+  samples or recordings are used). They are part of this fork and under
+  the same Artistic License as the rest of the game.
+- `music/`: empty apart from its README; music files added there carry
+  their own licences, which should be noted here when they are added.
+
+## Bundled code
+
+- `third_party/miniaudio/` (miniaudio 0.11.26, David Reid): public
+  domain (Unlicense) or MIT No Attribution, at the user's choice; see
+  `third_party/miniaudio/LICENSE`.
+- `third_party/stb_vorbis/` (stb_vorbis 1.23, Sean Barrett): MIT or
+  public domain (Unlicense), at the user's choice; see
+  `third_party/stb_vorbis/LICENSE`.
+
+Both licences allow use in a game under the Artistic License, with or
+without changes. Neither library is modified.
+
 ## Third-party images
 
 Images whose rights are unclear are left out of this fork: a scanned

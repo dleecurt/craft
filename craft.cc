@@ -25,6 +25,7 @@
 #include "xtimer.h"
 #include "screens.h"
 #include "zoom.h"
+#include "sound.h"
 #include <time.h>
 #include "savegame.h"
 
@@ -1066,6 +1067,11 @@ int main(int argc, char **argv)
    { // start_message
       printf("CRAFT Version 3.5 (http://set.gmd.de/~hua) started\n");
    }
+   { // init_sound
+      sound_open();
+      win::idle_hook = sound_tick;
+      music_menu();
+   }
    { // init_players
       int tic;
 
@@ -1104,6 +1110,7 @@ int main(int argc, char **argv)
    }
    else
       set_initial_objects();
+   music_game();
    { // exec_craft
       bool quit = false;
       int cnt;
@@ -1135,6 +1142,8 @@ int main(int argc, char **argv)
                      { // exec_player_cmd
                         objects->new_order(id[p], cmd[p], x[p], y[p]);
                      }
+                     if (num > 0)
+                        sfx_for(sfx_ack, player_color[pi]);
                   }
                   if (is_suspend)
                   {
@@ -1203,6 +1212,7 @@ int main(int argc, char **argv)
                               if (quit && only != -1)
                               {
                                  sprintf(msg, "%s wins", name[only]);
+                                 music_game_over(true);
                                  { // tell_to_players
                                     for (int j = 0; j < max_players; j++)
                                     {
@@ -1242,6 +1252,7 @@ int main(int argc, char **argv)
                               else if (quit && only == -1)
                               {
                                  sprintf(msg, "The computer wins, haha...");
+                                 music_game_over(false);
                                  { // tell_to_players
                                     for (int j = 0; j < max_players; j++)
                                     {
@@ -1379,6 +1390,7 @@ int main(int argc, char **argv)
                   if (quit && only != -1)
                   {
                      sprintf(msg, "%s wins", name[only]);
+                     music_game_over(true);
                      { // tell_to_players
                         for (int j = 0; j < max_players; j++)
                         {
@@ -1418,6 +1430,7 @@ int main(int argc, char **argv)
                   else if (quit && only == -1)
                   {
                      sprintf(msg, "The computer wins, haha...");
+                     music_game_over(false);
                      { // tell_to_players
                         for (int j = 0; j < max_players; j++)
                         {

@@ -241,21 +241,6 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
 }
 
 /* "pace 40/s" above the save button; changed with + and - */
-/* Buttons act on a press and never on a release, but they only look at
-   the first queued event. A release with no button under it (the mouse
-   was let go beside the button, or the buttons changed between press and
-   release) therefore blocked every button of the panel until it was
-   cleared, and the clicks behind it were lost. Drop such releases. */
-static void drop_stray_releases(win *w)
-{
-   int xe;
-   int ye;
-   int b;
-
-   while (w->is_mouse(xe, ye, b) && b < 0)
-      w->mouse(xe, ye, b);
-}
-
 void player::show_pace()
 {
    char text[32];
@@ -845,6 +830,21 @@ int player::point_to(int mx, int my)
    }
    else
       return none;
+}
+
+/* Buttons act on a press and never on a release, but they only look at
+   the first queued event. A release with no button under it (the mouse
+   was let go beside the button, or the buttons changed between press and
+   release) therefore blocked every button of the panel until it was
+   cleared, and the clicks behind it were lost. Drop such releases. */
+static void drop_stray_releases(win *w)
+{
+   int xe;
+   int ye;
+   int b;
+
+   while (w->is_mouse(xe, ye, b) && b < 0)
+      w->mouse(xe, ye, b);
 }
 
 void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[max_marked],

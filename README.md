@@ -179,6 +179,31 @@ took, how many objects are alive, and the length of the X event queue
 (which should stay at a few events). `CRAFT_PROFILE=fast` also drops
 the pause between steps, to fast-forward a game for testing.
 
+### Replays
+
+Every game is recorded to `~/.local/share/craft/replays/last.craftreplay`
+(the next game replaces it; `CRAFT_REPLAY=off` turns recording off, and
+`craft --record FILE` records to a file of your choice). A recording
+holds the game as it was at the start plus every order given, so it is
+small, a few dozen kilobytes.
+
+`craft --replay FILE` plays a recording back. Every 200 steps it checks
+that the game is in exactly the state it was in when recorded, and at
+the end it prints whether the whole game *matched* and a hash of the
+final state. Add `CRAFT_PROFILE=fast` to run through it quickly:
+
+    CRAFT_PROFILE=fast craft --replay ~/.local/share/craft/replays/last.craftreplay
+
+Network play (in the works) depends on this: every computer runs the
+whole game from the same orders, so the game must play out exactly the
+same way everywhere. If a replay ever diverges, run it again with
+`CRAFT_REPLAY_DUMP=/some/dir` set (both when recording and when
+playing back) and compare the `rec-*` and `play-*` files there with
+`diff` to see which unit went its own way.
+
+Ctrl-C (or `kill`) ends a game cleanly, so the recording is complete.
+Pressing it twice quits at once.
+
 ### Pausing
 
 To pause, press **pause** next to **quit** in the status panel (or the

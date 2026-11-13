@@ -1,6 +1,7 @@
 #ifndef savegame_h
 #define savegame_h
 
+#include <zlib.h>
 #include "bool.h"
 
 /*----------------------------------------------------------------------*/
@@ -24,6 +25,9 @@ extern char restore_name[128];
 /* Directory holding the saves (created if needed). */
 const char *saves_dir();
 
+/* mkdir -p */
+void make_dirs(const char path[]);
+
 /* Save the running game. Returns false and fills error on failure. */
 bool save_game(const char save_name[], char error[256]);
 
@@ -35,6 +39,12 @@ int list_saves(char names[][128], char labels[][160], int max);
    reason and return false. */
 bool restore_game_globals(const char save_name[]);
 bool restore_game_objects();
+
+/* For replays: the same snapshot written into, or read from, a file the
+   caller has open, which stays open for what follows the snapshot. */
+bool save_game_into(gzFile f);
+bool restore_game_globals_from(gzFile f); /* reads past the snapshot's options */
+bool restore_game_objects_from(gzFile f); /* the rest; f stays open */
 
 /* Ask for a name and save; reports the result in a dialog. Used by the
    in-game Save button and when quitting. */

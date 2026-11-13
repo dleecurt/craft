@@ -153,7 +153,6 @@ void robot::eval()
 {
    int exec_cnt = 0;
    bool worker_set_idle = false;
-   double s_time = x_sys_time();
 
    if ((ticker % 15) == 0)
    { // perform_a_bit
@@ -181,7 +180,9 @@ void robot::eval()
          if (is_water_world)
             ilf->update(color);
       }
-      for (int ct = 0; ct < 200 && (exec_cnt < 1 && (x_sys_time() - s_time) < 50); ct++)
+      /* up to 200 tries for one action (this also stopped after 50 ms,
+         which made the computer player depend on the machine's speed) */
+      for (int ct = 0; ct < 200 && exec_cnt < 1; ct++)
       {
          { // cycle
             cnt++;
@@ -499,33 +500,35 @@ void robot::eval()
                                        double best_dist = DBL_MAX;
 
                                        any_place = false;
-                                       for (int i = 0;
-                                            ((x_sys_time() - s_time) < 100
-                                             || ((x_sys_time() - s_time) < 300 && i < 10));
-                                            i++)
-                                       { // try_t_field
-                                          x = i_random(i_max(0, cx - 15),
-                                                       i_min(landscape_dx, cx + 15));
-                                          y = i_random(i_max(0, cy - 15),
-                                                       i_min(landscape_dy, cy + 15));
-                                          { // check_t_field
-                                             if (robo_can_built(o, x, y)
-                                                 && ((cx - x) * (cx - x) + (cy - y) * (cy - y))
-                                                        < best_dist
-                                                 && ((cx - x) * (cx - x) + (cy - y) * (cy - y)) > 0
-                                                 && sqrt(
-                                                        ((cx - x) * (cx - x) + (cy - y) * (cy - y)))
-                                                        >= 2
-                                                 && pf->f[x][y] == 0 && can_walk_to(10, o, x, y, 1))
-                                             {
-                                                best_dist
-                                                    = ((cx - x) * (cx - x) + (cy - y) * (cy - y));
-                                                best_x = x;
-                                                best_y = y;
-                                                any_place = true;
+                                       /* Every square within 15 of the centre, nearest valid one wins. This
+                                          used to try random squares until 100 ms had passed: about two
+                                          million tries now, a stall of one tenth of a second, and a result
+                                          that depended on the machine's speed. */
+                                       for (x = i_max(0, cx - 15);
+                                            x <= i_min(landscape_dx - 1, cx + 15); x++)
+                                          for (y = i_max(0, cy - 15);
+                                               y <= i_min(landscape_dy - 1, cy + 15); y++)
+                                          {    // try_t_field
+                                             { // check_t_field
+                                                if (robo_can_built(o, x, y)
+                                                    && ((cx - x) * (cx - x) + (cy - y) * (cy - y))
+                                                           < best_dist
+                                                    && ((cx - x) * (cx - x) + (cy - y) * (cy - y))
+                                                           > 0
+                                                    && sqrt(((cx - x) * (cx - x)
+                                                             + (cy - y) * (cy - y)))
+                                                           >= 2
+                                                    && pf->f[x][y] == 0
+                                                    && can_walk_to(10, o, x, y, 1))
+                                                {
+                                                   best_dist = ((cx - x) * (cx - x)
+                                                                + (cy - y) * (cy - y));
+                                                   best_x = x;
+                                                   best_y = y;
+                                                   any_place = true;
+                                                }
                                              }
                                           }
-                                       }
                                        /*
       for (x = xmin; x < xmax; x+= 1)
         for (y = ymin; y < ymax; y+= 1)
@@ -811,33 +814,35 @@ void robot::eval()
                                        double best_dist = DBL_MAX;
 
                                        any_place = false;
-                                       for (int i = 0;
-                                            ((x_sys_time() - s_time) < 100
-                                             || ((x_sys_time() - s_time) < 300 && i < 10));
-                                            i++)
-                                       { // try_t_field
-                                          x = i_random(i_max(0, cx - 15),
-                                                       i_min(landscape_dx, cx + 15));
-                                          y = i_random(i_max(0, cy - 15),
-                                                       i_min(landscape_dy, cy + 15));
-                                          { // check_t_field
-                                             if (robo_can_built(o, x, y)
-                                                 && ((cx - x) * (cx - x) + (cy - y) * (cy - y))
-                                                        < best_dist
-                                                 && ((cx - x) * (cx - x) + (cy - y) * (cy - y)) > 0
-                                                 && sqrt(
-                                                        ((cx - x) * (cx - x) + (cy - y) * (cy - y)))
-                                                        >= 2
-                                                 && pf->f[x][y] == 0 && can_walk_to(10, o, x, y, 1))
-                                             {
-                                                best_dist
-                                                    = ((cx - x) * (cx - x) + (cy - y) * (cy - y));
-                                                best_x = x;
-                                                best_y = y;
-                                                any_place = true;
+                                       /* Every square within 15 of the centre, nearest valid one wins. This
+                                          used to try random squares until 100 ms had passed: about two
+                                          million tries now, a stall of one tenth of a second, and a result
+                                          that depended on the machine's speed. */
+                                       for (x = i_max(0, cx - 15);
+                                            x <= i_min(landscape_dx - 1, cx + 15); x++)
+                                          for (y = i_max(0, cy - 15);
+                                               y <= i_min(landscape_dy - 1, cy + 15); y++)
+                                          {    // try_t_field
+                                             { // check_t_field
+                                                if (robo_can_built(o, x, y)
+                                                    && ((cx - x) * (cx - x) + (cy - y) * (cy - y))
+                                                           < best_dist
+                                                    && ((cx - x) * (cx - x) + (cy - y) * (cy - y))
+                                                           > 0
+                                                    && sqrt(((cx - x) * (cx - x)
+                                                             + (cy - y) * (cy - y)))
+                                                           >= 2
+                                                    && pf->f[x][y] == 0
+                                                    && can_walk_to(10, o, x, y, 1))
+                                                {
+                                                   best_dist = ((cx - x) * (cx - x)
+                                                                + (cy - y) * (cy - y));
+                                                   best_x = x;
+                                                   best_y = y;
+                                                   any_place = true;
+                                                }
                                              }
                                           }
-                                       }
                                        /*
       for (x = xmin; x < xmax; x+= 1)
         for (y = ymin; y < ymax; y+= 1)
@@ -2023,35 +2028,37 @@ void robot::eval()
                                           double best_dist = DBL_MAX;
 
                                           any_place = false;
-                                          for (int i = 0;
-                                               ((x_sys_time() - s_time) < 100
-                                                || ((x_sys_time() - s_time) < 300 && i < 10));
-                                               i++)
-                                          { // try_t_field
-                                             x = i_random(i_max(0, cx - 15),
-                                                          i_min(landscape_dx, cx + 15));
-                                             y = i_random(i_max(0, cy - 15),
-                                                          i_min(landscape_dy, cy + 15));
-                                             { // check_t_field
-                                                if (robo_can_built(o, x, y)
-                                                    && ((cx - x) * (cx - x) + (cy - y) * (cy - y))
-                                                           < best_dist
-                                                    && ((cx - x) * (cx - x) + (cy - y) * (cy - y))
-                                                           > 0
-                                                    && sqrt(((cx - x) * (cx - x)
-                                                             + (cy - y) * (cy - y)))
-                                                           >= 2
-                                                    && pf->f[x][y] == 0
-                                                    && can_walk_to(10, o, x, y, 1))
-                                                {
-                                                   best_dist = ((cx - x) * (cx - x)
-                                                                + (cy - y) * (cy - y));
-                                                   best_x = x;
-                                                   best_y = y;
-                                                   any_place = true;
+                                          /* Every square within 15 of the centre, nearest valid one wins. This
+                                             used to try random squares until 100 ms had passed: about two
+                                             million tries now, a stall of one tenth of a second, and a result
+                                             that depended on the machine's speed. */
+                                          for (x = i_max(0, cx - 15);
+                                               x <= i_min(landscape_dx - 1, cx + 15); x++)
+                                             for (y = i_max(0, cy - 15);
+                                                  y <= i_min(landscape_dy - 1, cy + 15); y++)
+                                             {    // try_t_field
+                                                { // check_t_field
+                                                   if (robo_can_built(o, x, y)
+                                                       && ((cx - x) * (cx - x)
+                                                           + (cy - y) * (cy - y))
+                                                              < best_dist
+                                                       && ((cx - x) * (cx - x)
+                                                           + (cy - y) * (cy - y))
+                                                              > 0
+                                                       && sqrt(((cx - x) * (cx - x)
+                                                                + (cy - y) * (cy - y)))
+                                                              >= 2
+                                                       && pf->f[x][y] == 0
+                                                       && can_walk_to(10, o, x, y, 1))
+                                                   {
+                                                      best_dist = ((cx - x) * (cx - x)
+                                                                   + (cy - y) * (cy - y));
+                                                      best_x = x;
+                                                      best_y = y;
+                                                      any_place = true;
+                                                   }
                                                 }
                                              }
-                                          }
                                           /*
       for (x = xmin; x < xmax; x+= 1)
         for (y = ymin; y < ymax; y+= 1)
@@ -2343,35 +2350,37 @@ void robot::eval()
                                           double best_dist = DBL_MAX;
 
                                           any_place = false;
-                                          for (int i = 0;
-                                               ((x_sys_time() - s_time) < 100
-                                                || ((x_sys_time() - s_time) < 300 && i < 10));
-                                               i++)
-                                          { // try_t_field
-                                             x = i_random(i_max(0, cx - 15),
-                                                          i_min(landscape_dx, cx + 15));
-                                             y = i_random(i_max(0, cy - 15),
-                                                          i_min(landscape_dy, cy + 15));
-                                             { // check_t_field
-                                                if (robo_can_built(o, x, y)
-                                                    && ((cx - x) * (cx - x) + (cy - y) * (cy - y))
-                                                           < best_dist
-                                                    && ((cx - x) * (cx - x) + (cy - y) * (cy - y))
-                                                           > 0
-                                                    && sqrt(((cx - x) * (cx - x)
-                                                             + (cy - y) * (cy - y)))
-                                                           >= 2
-                                                    && pf->f[x][y] == 0
-                                                    && can_walk_to(10, o, x, y, 1))
-                                                {
-                                                   best_dist = ((cx - x) * (cx - x)
-                                                                + (cy - y) * (cy - y));
-                                                   best_x = x;
-                                                   best_y = y;
-                                                   any_place = true;
+                                          /* Every square within 15 of the centre, nearest valid one wins. This
+                                             used to try random squares until 100 ms had passed: about two
+                                             million tries now, a stall of one tenth of a second, and a result
+                                             that depended on the machine's speed. */
+                                          for (x = i_max(0, cx - 15);
+                                               x <= i_min(landscape_dx - 1, cx + 15); x++)
+                                             for (y = i_max(0, cy - 15);
+                                                  y <= i_min(landscape_dy - 1, cy + 15); y++)
+                                             {    // try_t_field
+                                                { // check_t_field
+                                                   if (robo_can_built(o, x, y)
+                                                       && ((cx - x) * (cx - x)
+                                                           + (cy - y) * (cy - y))
+                                                              < best_dist
+                                                       && ((cx - x) * (cx - x)
+                                                           + (cy - y) * (cy - y))
+                                                              > 0
+                                                       && sqrt(((cx - x) * (cx - x)
+                                                                + (cy - y) * (cy - y)))
+                                                              >= 2
+                                                       && pf->f[x][y] == 0
+                                                       && can_walk_to(10, o, x, y, 1))
+                                                   {
+                                                      best_dist = ((cx - x) * (cx - x)
+                                                                   + (cy - y) * (cy - y));
+                                                      best_x = x;
+                                                      best_y = y;
+                                                      any_place = true;
+                                                   }
                                                 }
                                              }
-                                          }
                                           /*
       for (x = xmin; x < xmax; x+= 1)
         for (y = ymin; y < ymax; y+= 1)

@@ -10,6 +10,15 @@ craft \- CRAFT: The Vicious Vikings, a real-time strategy game for X11
 .B \-\-replay
 .IR FILE
 .RB [ \-\-no\-view ]]
+.RB [ \-\-host ]
+.RB [ \-\-join
+.I HOST
+.B \-\-code
+.I CODE
+.RB [ \-\-name
+.IR NAME ]]
+.RB [ \-\-port
+.IR N ]
 .SH DESCRIPTION
 .B craft
 is a real-time strategy game in the style of Warcraft and Dune II.
@@ -82,6 +91,28 @@ With
 .BR \-\-replay :
 play the recording back without opening any window (no X display is
 needed), as fast as possible.
+.TP
+.B \-\-host
+Host a network game. Every person seat on the start menu after your own
+is played by a guest; after
+.B Play
+the game waits for them and prints a join code.
+.TP
+.BI \-\-join " HOST"
+Join the game hosted at
+.I HOST
+(or
+.IR HOST:PORT ).
+.TP
+.BI \-\-code " CODE"
+The join code the host was given.
+.TP
+.BI \-\-name " NAME"
+Your name in a network game (default: your login name).
+.TP
+.BI \-\-port " N"
+The port to host on or join (default 47800). The host listens on
+127.0.0.1 only; guests on other computers reach it through SSH.
 .SH ENVIRONMENT
 .TP
 .B DISPLAY

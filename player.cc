@@ -9,6 +9,7 @@
 
 #include "player.h"
 #include "sound.h"
+#include "net.h"
 #include "savegame.h"
 #include "masks.h"
 #include "object_handler.h"
@@ -235,7 +236,8 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
          }
       }
    }
-   else
+   rob = NULL;
+   if (is_robot)
    { // init_rob
       rob = new robot(l_color, pno);
       bonus = robo_power;
@@ -858,6 +860,29 @@ static void drop_stray_releases(win *w)
 
    while (w->is_mouse(xe, ye, b) && b < 0)
       w->mouse(xe, ye, b);
+}
+
+void player::rebuild_sight()
+{
+   if (!has_view)
+      return;
+   for (int x = 0; x < max_land_dx; x++)
+      for (int y = 0; y < max_land_dy; y++)
+         sun_cnt[x][y] = 0;
+   for (int id = 0; id < max_objects; id++)
+      if (!objects->is_free[id] && objects->color[id] == color && objects->on_ship[id] == -1
+          && objects->vr[id] > 0)
+      {
+         int r = objects->vr[id];
+
+         for (int x = i_max(0, objects->x[id] - r);
+              x <= i_min(landscape_dx - 1, objects->x[id] + r); x++)
+            for (int y = i_max(0, objects->y[id] - r);
+                 y <= i_min(landscape_dy - 1, objects->y[id] + r); y++)
+               sun_cnt[x][y]++;
+      }
+   show();
+   show_overview();
 }
 
 void player::queue_order(int id, int c, int x, int y)
@@ -1768,8 +1793,9 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_orders], int cmd_id[m
                case '+':
                case '=':
                case '-':
-               { // change_game_pace
-                  step_game_pace(cc[0] == '-' ? -1 : 1);
+               {                             // change_game_pace
+                  if (net_role != net_guest) /* the host sets the pace */
+                     net_send_pace(step_game_pace(cc[0] == '-' ? -1 : 1));
                   for (int p = 0; p < max_players; p++)
                      if (::active[p] && players[p]->has_view)
                         players[p]->show_pace();
@@ -2400,8 +2426,8 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_orders], int cmd_id[m
          w_pause->mark_mouse();
          w_pause->tick();
          drop_stray_releases(w_pause);
-         if (p_button[p_no]->eval() || b_pause->eval())
-         {
+         if ((p_button[p_no]->eval() || b_pause->eval()) && net_role != net_guest)
+         { /* in a network game only the host pauses */
             paused[p_no] = true;
             num_paused++;
          }
@@ -3599,11 +3625,21 @@ void player::write(const char msg[])
 {
    if (!has_view || w_inform == NULL)
       return;
-   if (strcmp(msg, msgs[2]) == 0)
-      return; /* the same message again: already shown */
-   strcpy(msgs[0], msgs[1]);
-   strcpy(msgs[1], msgs[2]);
-   snprintf(msgs[2], sizeof(msgs[2]), "%s", msg);
+   if (strchr(msg, '\n') != NULL)
+   { /* a two-line note replaces both lines */
+      const char *nl = strchr(msg, '\n');
+
+      snprintf(msgs[1], sizeof(msgs[1]), "%.*s", (int)(nl - msg), msg);
+      snprintf(msgs[2], sizeof(msgs[2]), "%s", nl + 1);
+   }
+   else
+   {
+      if (strcmp(msg, msgs[2]) == 0)
+         return; /* the same message again: already shown */
+      strcpy(msgs[0], msgs[1]);
+      strcpy(msgs[1], msgs[2]);
+      snprintf(msgs[2], sizeof(msgs[2]), "%s", msg);
+   }
    w_inform->set_color(gray80);
    w_inform->fill(0, 0, w_inform_dx, w_msg_dy);
    w_inform->set_color(red);

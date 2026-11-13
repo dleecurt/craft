@@ -199,6 +199,10 @@ class player
    /* orders made outside the command panel (dials, pointing at a talk
       bubble), handed out with the next get_cmds */
    void   queue_order (int id, int cmd, int x, int y);
+
+   /* work out what our units can see from scratch (a side that had no
+      screen where the game was set up kept no record of it) */
+   void   rebuild_sight ();
    int    pend_num;
    int    pend_cmd [16];
    int    pend_id  [16];

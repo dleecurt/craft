@@ -53,6 +53,7 @@ libcraft_a_SOURCES = \
 	robot.cc robot.h \
 	savegame.cc savegame.h \
 	replay.cc replay.h \
+	net.cc net.h \
 	statehash.cc statehash.h \
 	screens.cc screens.h \
 	scroller.cc scroller.h \

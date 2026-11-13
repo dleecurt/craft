@@ -341,6 +341,7 @@ static bool restore_player(gzFile f, player *live)
    KEEP(live, old, limit_zero);
    KEEP(live, old, is_dial);
    KEEP(live, old, rob);
+   KEEP(live, old, has_view);
    KEEP(live, old, p_pressed);
    KEEP(live, old, p_button);
    KEEP(live, old, host);

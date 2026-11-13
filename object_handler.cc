@@ -152,6 +152,13 @@ void object_handler::delete_object(int id)
 void object_handler::exec()
 {
    ticker++;
+   { // bound_food
+      /* People's food stays within 0..max_food.  (This used to happen in
+         the status-panel code, so only on a screen that showed it.) */
+      for (int k = 0; k < num_players; k++)
+         if (players[k]->active && !players[k]->is_robot)
+            players[k]->food = d_bound(0.0, players[k]->food, max_food);
+   }
    { // exec_mans
       for (int i = 0; i < max_objects; i++)
          exec(i);
@@ -159,7 +166,7 @@ void object_handler::exec()
    { // exec_robots
       for (int k = 0; k < num_players; k++)
       {
-         if (players[k]->active && !players[k]->is_robot)
+         if (players[k]->active && players[k]->has_view)
             players[k]->w_land->tick();
          if (players[k]->is_robot)
             players[k]->rob->eval();
@@ -8202,7 +8209,7 @@ bool object_handler::readmin(int n_color, int d_money, int d_wood, bool anyway)
 void object_handler::write(int color, const char msg[])
 {
    if (getenv("CRAFT_MSG_LOG"))
-   players[color_player[color]]->write(msg);
+      players[color_player[color]]->write(msg);
 }
 
 bool object_handler::max_diff(int x, int y, int h)

@@ -203,6 +203,10 @@ final state. Add `CRAFT_PROFILE=fast` to run through it quickly:
 
     CRAFT_PROFILE=fast craft --replay ~/.local/share/craft/replays/last.craftreplay
 
+`--no-view` plays a recording back without opening any window (no X
+display needed), as fast as the computer can; `make check` does this
+with the recordings in `tests/`.
+
 Network play (in the works) depends on this: every computer runs the
 whole game from the same orders, so the game must play out exactly the
 same way everywhere. If a replay ever diverges, run it again with

@@ -23,6 +23,7 @@
 
 #include <math.h>
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #include <X11/extensions/Xrender.h> /* before win.h, whose colour macros clash */
 #include "win.h"
 #include "zoom.h"
@@ -1242,8 +1243,10 @@ void win::tick(bool pause)
             break;
          case KeyPress:
          { // handle_press_key
-            /* Only keys that type a character are queued. Keys like Shift
-               used to queue whatever was in an uninitialised buffer. */
+            /* Every key but Shift, Ctrl and the like is queued, with its
+               character (0 for keys such as the arrows, which text fields
+               use by name). Modifiers used to queue whatever was in an
+               uninitialised buffer. */
             char instring[10] = { 0 };
             KeySym mykey;
             int len;
@@ -1251,13 +1254,13 @@ void win::tick(bool pause)
             press_cnt++;
             len = XLookupString((XKeyEvent *)&myevent, instring, sizeof(instring) - 1, &mykey, 0);
             act_key = (int)myevent.xkey.keycode;
-            if (len > 0 && instring[0] != 0 && keycount < keybuf_size - 1)
+            if (!IsModifierKey(mykey) && keycount < keybuf_size - 1)
             { // push_to_queue
                const char *name = XKeysymToString(mykey);
 
                snprintf(cntlbuffer[keycount], sizeof(cntlbuffer[keycount]), "%s",
                         name != NULL ? name : "");
-               inbuffer[keycount] = instring[0];
+               inbuffer[keycount] = len > 0 ? instring[0] : 0;
                keybuffer[keycount] = act_key;
                keycount++;
                inbuffer[keycount] = 0;
@@ -1357,14 +1360,15 @@ char win::inchar(int &key, char *cntl)
       c = inbuffer[0];
       key = keybuffer[0];
       strcpy(cntl, cntlbuffer[0]);
-      { // shift_rest
-         delchar(inbuffer, 0);
-         for (int i = 0; i < keybuf_size - 1; i++)
+      { // shift_rest (by count: keys without a character hold a 0)
+         for (int i = 0; i < keycount - 1; i++)
          {
+            inbuffer[i] = inbuffer[i + 1];
             keybuffer[i] = keybuffer[i + 1];
             strcpy(cntlbuffer[i], cntlbuffer[i + 1]);
          }
          keycount--;
+         inbuffer[keycount] = 0;
       }
       return c;
    }

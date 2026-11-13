@@ -282,7 +282,9 @@ bool craft_getline::eval()
             }
             else
             { // handle_text_input
-               if (c != 0)
+               /* printable characters only: Escape, Tab and other control
+                  keys used to go into the text as junk */
+               if ((unsigned char)c >= 32 && c != 127)
                { // insert_new_char
                   inschar(line, pos, c);
                   { // handle_cursor_right

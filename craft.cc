@@ -1192,10 +1192,10 @@ int main(int argc, char **argv)
             for (int pi = 0; pi < max_players; pi++)
                if (active[pi] && !players[pi]->is_robot)
                { // read_player_cmd
-                  int cmd[max_marked];
-                  int x[max_marked];
-                  int y[max_marked];
-                  int id[max_marked];
+                  int cmd[max_orders];
+                  int x[max_orders];
+                  int y[max_orders];
+                  int id[max_orders];
                   int num;
                   int suspend = -1;
                   bool is_suspend = false;

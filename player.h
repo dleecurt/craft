@@ -186,10 +186,19 @@ class player
 
    void get_cmds            (bool &is_quit,
                              int  &num,
-                             int  cmd    [max_marked],
-                             int  cmd_id [max_marked],
-                             int  cmd_x  [max_marked],
-                             int  cmd_y  [max_marked]);
+                             int  cmd    [max_orders],
+                             int  cmd_id [max_orders],
+                             int  cmd_x  [max_orders],
+                             int  cmd_y  [max_orders]);
+
+   /* orders made outside the command panel (dials, pointing at a talk
+      bubble), handed out with the next get_cmds */
+   void   queue_order (int id, int cmd, int x, int y);
+   int    pend_num;
+   int    pend_cmd [16];
+   int    pend_id  [16];
+   int    pend_x   [16];
+   int    pend_y   [16];
    void tick                ();
 
    int  x_center            (int lx);

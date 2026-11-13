@@ -355,6 +355,7 @@ static bool restore_player(gzFile f, player *live)
          live->num_marked_ships[k] = 0;
       }
       live->last_num_mans = -1;
+      live->pend_num = 0;
       live->last_money = -1;
       live->last_wood = -1;
       live->last_food = -1000;

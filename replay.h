@@ -7,7 +7,6 @@
  * File: gzip, "CRAFTRPL" + version, a full snapshot of the game at the
  * first step (the same format as a saved game), then records:
  *   ordr  step player n  ids[n] cmds[n] xs[n] ys[n]
- *   gvup  step player                 (the player gave up)
  *   hash  step hash                   (every replay_hash_every steps)
  *   end   step hash                   (the game ended here)
  */
@@ -32,7 +31,6 @@ const char *replay_default_path();
 bool replay_record_start(const char path[]);
 void replay_record_orders(int step, int player, int n, const int id[], const int cmd[],
                           const int x[], const int y[]);
-void replay_record_give_up(int step, int player);
 void replay_record_close(); /* safe to call more than once */
 
 /* Playback.  replay_open reads the header and restores the snapshot's
@@ -41,11 +39,9 @@ void replay_record_close(); /* safe to call more than once */
 bool replay_open(const char path[]);
 bool replay_open_objects();
 
-/* The orders recorded for this player at this step (num 0 if none);
-   give_up is set if the player gave up.  Ends the program when the
-   recording ends. */
-void replay_take(int step, int player, int &num, int cmd[], int id[], int x[], int y[],
-                 bool &give_up);
+/* The orders recorded for this player at this step (num 0 if none).
+   Ends the program when the recording ends. */
+void replay_take(int step, int player, int &num, int cmd[], int id[], int x[], int y[]);
 
 /* The game ended during playback: report and end the program. */
 void replay_playback_end(int step);

@@ -40,7 +40,8 @@
 #define w_msg_dx 100
 #define w_msg_dy 30
 
-player::player(int pno, char l_name[], char l_host[], int l_color, double g_speed, bool p_robot)
+player::player(int pno, char l_name[], char l_host[], int l_color, double g_speed, bool p_robot,
+               bool p_view)
 
 {
    { // store_params
@@ -58,6 +59,7 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
       master_dead = false;
       num_man = 0;
       is_robot = p_robot;
+      has_view = !p_robot && p_view;
       last_money = -1;
       last_wood = -1;
       last_food = -100;
@@ -111,7 +113,7 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
          food = 1000;
       }
    }
-   if (!is_robot)
+   if (has_view)
    {    // open_windows
       { // init_sun_cnt
          for (int x = 0; x < max_land_dx; x++)
@@ -249,7 +251,7 @@ void player::show_pace()
 {
    char text[32];
 
-   if (is_robot)
+   if (!has_view)
       return;
    /* Beside Gold/Wood/Food/Men, whose text ends near x 121: the command
       list above can reach y 620, so nothing else of ours may go there. */
@@ -270,7 +272,7 @@ void player::initial_display()
    show();
    show_overview();
    show_overview_frame(true);
-   if (!is_robot)
+   if (has_view)
    {
       w_land->tick();
       w_overview->tick();
@@ -325,6 +327,9 @@ void player::deactivate()
                }
             }
       }
+   }
+   if (has_view)
+   {
       { // delete_pics
          for (int i = 0; i < max_pics; i++)
             if (pic_used[i])
@@ -436,7 +441,7 @@ void player::load_pics()
 
 void player::show()
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       for (int x = x0; x < i_min(landscape_dx, (x0 + (wdx / pic_dx))); x++)
          for (int y = y0; y < i_min(landscape_dy, (y0 + (wdy / pic_dy))); y++)
@@ -446,7 +451,7 @@ void player::show()
 
 void player::show_int(int lx, int ly, int i)
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       int wx = (lx - x0) * pic_dx;
       int wy = (ly - y0) * pic_dy;
@@ -469,7 +474,7 @@ void player::show(int lx, int ly, bool extra_mark)
 
 void player::show(int lx0, int ly0, int lx, int ly, bool extra_mark)
 {
-   if (!is_robot && (0 <= lx && lx < landscape_dx && 0 <= ly && ly < landscape_dy))
+   if (has_view && (0 <= lx && lx < landscape_dx && 0 <= ly && ly < landscape_dy))
    { // perform_show
       if (!is_suny || sun_cnt[lx][ly] > 0)
       { // show_field
@@ -638,7 +643,7 @@ players [0]->show_int (lx, ly, u_pic);
 
 void player::show_main_mark(int u, int wx, int wy)
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       if (objects->type[u] == object_ship1)
       {    // show_ship_mark
@@ -665,7 +670,7 @@ void player::show_main_mark(int u, int wx, int wy)
 
 void player::show_mark(int u, int wx, int wy)
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       if (objects->type[u] == object_ship1)
       { // show_ship_mark
@@ -682,7 +687,7 @@ void player::show_mark(int u, int wx, int wy)
 
 void player::show_overview()
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       for (int x = 0; x < landscape_dx; x++)
          for (int y = 0; y < landscape_dy; y++)
@@ -692,7 +697,7 @@ void player::show_overview()
 
 void player::show_overview(int lx, int ly)
 {
-   if (!is_robot && (0 <= lx && lx < landscape_dx && 0 <= ly && ly < landscape_dy))
+   if (has_view && (0 <= lx && lx < landscape_dx && 0 <= ly && ly < landscape_dy))
    { // perform_show
       if ((!is_suny || sun_cnt[lx][ly] > 0)
           || (unit[lx][ly] != none && objects->type[unit[lx][ly]] == object_mine))
@@ -748,7 +753,7 @@ void player::show_overview(int lx, int ly)
 
 void player::show_overview_frame(int lx, int ly)
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       int xx = lx * olandscale;
       int yy = ly * olandscale;
@@ -760,7 +765,7 @@ void player::show_overview_frame(int lx, int ly)
 
 void player::show_overview_frame(bool is_display)
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       if (is_display)
       { // perform_display
@@ -878,7 +883,7 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_orders], int cmd_id[m
                       int cmd_x[max_orders], int cmd_y[max_orders])
 
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_get
       int d;
 
@@ -1756,7 +1761,7 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_orders], int cmd_id[m
                { // toggle_mute (Shift+M; plain m is Move)
                   sound_muted = sound_toggle_mute();
                   for (int p = 0; p < max_players; p++)
-                     if (::active[p] && !players[p]->is_robot)
+                     if (::active[p] && players[p]->has_view)
                         players[p]->show_pace();
                };
                break;
@@ -1766,7 +1771,7 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_orders], int cmd_id[m
                { // change_game_pace
                   step_game_pace(cc[0] == '-' ? -1 : 1);
                   for (int p = 0; p < max_players; p++)
-                     if (::active[p] && !players[p]->is_robot)
+                     if (::active[p] && players[p]->has_view)
                         players[p]->show_pace();
                };
                break;
@@ -2377,7 +2382,6 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_orders], int cmd_id[m
             w_status->write(30, 728, a);
             last_num_mans = num_mans;
          }
-         food = d_bound(0.0, food, max_food);
          if (d_abs(food - last_food) > 1.0 || food <= 0.0)
          { // show_food
             char a[128];
@@ -2639,7 +2643,7 @@ void player::focus(int xx, int yy)
 
 void player::tick()
 {
-   if (!is_robot)
+   if (has_view)
       w_land->tick();
 }
 
@@ -2655,7 +2659,7 @@ int player::y_center(int ly)
 
 void player::show_percent(int x, int y, int dx, int dy, int p, const char title[])
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       int l1 = (int)((double)dx * double(p) / 100.0);
       int l2 = dx - l1;
@@ -2676,7 +2680,7 @@ void player::show_percent(int x, int y, int dx, int dy, int p, const char title[
 
 void player::clear_percent(int /* x */, int y, int /* dx */, int dy)
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       w_status->set_color(gray80);
       w_status->fill(10, y, 160, dy);
@@ -2685,7 +2689,7 @@ void player::clear_percent(int /* x */, int y, int /* dx */, int dy)
 
 void player::clear_status()
 {
-   if (!is_robot)
+   if (has_view)
    {    // perform_show
       { // clear_cmds
          for (int i = 0; i < num_cmds; i++)
@@ -2898,7 +2902,7 @@ void player::adjust_cmds()
 
 void player::show_status(int id, bool is_first_time)
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       if (id == none)
       { // handle_multi_status
@@ -3582,7 +3586,7 @@ void player::show_status(int id, bool is_first_time)
 
 void player::inform(char msg[])
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       ack(msg);
    }
@@ -3593,7 +3597,7 @@ void player::inform(char msg[])
    dropped, so a refused order gave no reason. */
 void player::write(const char msg[])
 {
-   if (is_robot || w_inform == NULL)
+   if (!has_view || w_inform == NULL)
       return;
    if (strcmp(msg, msgs[2]) == 0)
       return; /* the same message again: already shown */
@@ -4061,7 +4065,7 @@ void player::edit()
 
 void player::add_sun(int lx, int ly, int r)
 {
-   if (is_suny && !is_robot && active)
+   if (is_suny && has_view && active)
    { // perform_sun
       for (int x = i_max(0, lx - r); x <= i_min(landscape_dx - 1, lx + r); x++)
          for (int y = i_max(0, ly - r); y <= i_min(landscape_dy - 1, ly + r); y++)
@@ -4078,7 +4082,7 @@ void player::add_sun(int lx, int ly, int r)
 
 void player::sub_sun(int lx, int ly, int r)
 {
-   if (is_suny && !is_robot && active)
+   if (is_suny && has_view && active)
    { // perform_sun
       for (int x = i_max(0, lx - r); x <= i_min(landscape_dx - 1, lx + r); x++)
          for (int y = i_max(0, ly - r); y <= i_min(landscape_dy - 1, ly + r); y++)
@@ -4107,7 +4111,7 @@ void player::move_sun(int lx, int ly, int dx, int dy, int r)
 
 void player::move_sun_d(int lx, int ly, int dx, int dy, int r)
 {
-   if (is_suny && !is_robot && active)
+   if (is_suny && has_view && active)
    { // perform_sun
       int ix = i_sign(dx);
       int iy = i_sign(dy);

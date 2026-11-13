@@ -146,3 +146,8 @@ dist-hook:
 	  cp -pR "$(srcdir)/$$d" "$(distdir)/" || exit 1; \
 	done
 	chmod -R u+w "$(distdir)"
+
+# Recorded games played back without a window; they must play out
+# exactly as recorded (see tests/replay-check.sh).
+TESTS = tests/replay-check.sh
+EXTRA_DIST += tests/replay-check.sh tests/four-players.craftreplay tests/give-up.craftreplay

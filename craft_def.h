@@ -92,6 +92,7 @@
 #define cmd_set_limits     61   /* id: unit, x: gold limit, y: wood limit */
 #define cmd_talk_text      62   /* id: speaker, x: chunk 0..5, y: 4 bytes of text */
 #define talk_text_size     24
+#define cmd_give_up        63   /* the player gives up (id: none) */
 
 #define land_stump         10
 #define land_bush          11

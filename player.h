@@ -52,6 +52,10 @@ class player
    int    landscape_scale;
     
    bool   is_robot;
+   /* has windows on this computer.  False for computer players and for
+      people playing on another computer (network play, replays shown
+      without a screen); their side is still played in full here. */
+   bool   has_view;
    int    last_time; 
 
    bool   show_ship;
@@ -148,7 +152,8 @@ class player
                              char   host [], 
                              int    color, 
                              double g_speed,
-                             bool   robot = false);
+                             bool   robot = false,
+                             bool   view  = true);
 
    ~player                  ();
 

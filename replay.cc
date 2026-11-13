@@ -16,7 +16,7 @@
 bool replay_playing = false;
 
 static const char replay_magic[8] = { 'C', 'R', 'A', 'F', 'T', 'R', 'P', 'L' };
-static const int32_t replay_version = 1;
+static const int32_t replay_version = 2; /* 2: give up is an order */
 
 /*----------------------------------------------------------------------*/
 /* Low-level records                                                    */
@@ -117,14 +117,6 @@ void replay_record_orders(int step, int player, int n, const int id[], const int
       rec_fail();
 }
 
-void replay_record_give_up(int step, int player)
-{
-   if (rec == NULL || rec_failed)
-      return;
-   if (!(wtag(rec, "gvup") && w32(rec, step) && w32(rec, player)))
-      rec_fail();
-}
-
 void replay_record_close()
 {
    extern int ticker;
@@ -198,8 +190,6 @@ static void read_next()
          ok = r32(play, next.id[i]) && r32(play, next.cmd[i]) && r32(play, next.x[i])
               && r32(play, next.y[i]);
    }
-   else if (strcmp(next.tag, "gvup") == 0)
-      ok = ok && r32(play, next.player);
    else if (strcmp(next.tag, "hash") == 0 || strcmp(next.tag, "end ") == 0)
       ok = ok && r64(play, next.hash);
    else
@@ -269,11 +259,9 @@ void replay_playback_end(int step)
       finish(step, next.valid && strcmp(next.tag, "end ") == 0 && next.step == step);
 }
 
-void replay_take(int step, int player, int &num, int cmd[], int id[], int x[], int y[],
-                 bool &give_up)
+void replay_take(int step, int player, int &num, int cmd[], int id[], int x[], int y[])
 {
    num = 0;
-   give_up = false;
    if (play == NULL)
       return;
    for (;;)
@@ -296,8 +284,6 @@ void replay_take(int step, int player, int &num, int cmd[], int id[], int x[], i
             y[num] = next.y[i];
          }
       }
-      else if (strcmp(next.tag, "gvup") == 0)
-         give_up = true;
       else
          return;
       read_next();

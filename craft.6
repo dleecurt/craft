@@ -8,7 +8,8 @@ craft \- CRAFT: The Vicious Vikings, a real-time strategy game for X11
 .RB [ \-\-record
 .IR FILE " |"
 .B \-\-replay
-.IR FILE ]
+.IR FILE
+.RB [ \-\-no\-view ]]
 .SH DESCRIPTION
 .B craft
 is a real-time strategy game in the style of Warcraft and Dune II.
@@ -75,6 +76,12 @@ with the number of steps and a hash of the final state, and exits with
 status 0 (matched) or 3 (diverged). Combine with
 .B CRAFT_PROFILE=fast
 to play the recording back as fast as possible.
+.TP
+.B \-\-no\-view
+With
+.BR \-\-replay :
+play the recording back without opening any window (no X display is
+needed), as fast as possible.
 .SH ENVIRONMENT
 .TP
 .B DISPLAY

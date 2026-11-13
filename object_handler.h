@@ -113,6 +113,9 @@ class object_handler
 */
 
    int  first_free;
+
+   /* talk text per player, set by cmd_talk_text orders */
+   char talk_text     [max_players][talk_text_size];
    int  ticker;
    int  qticker;
      

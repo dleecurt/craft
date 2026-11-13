@@ -152,7 +152,7 @@ static struct
    int32_t step;
    int32_t player;
    int32_t n;
-   int32_t id[max_marked], cmd[max_marked], x[max_marked], y[max_marked];
+   int32_t id[max_orders], cmd[max_orders], x[max_orders], y[max_orders];
    uint64_t hash;
 } next;
 
@@ -193,7 +193,7 @@ static void read_next()
    ok = r32(play, next.step);
    if (strcmp(next.tag, "ordr") == 0)
    {
-      ok = ok && r32(play, next.player) && r32(play, next.n) && next.n > 0 && next.n <= max_marked;
+      ok = ok && r32(play, next.player) && r32(play, next.n) && next.n > 0 && next.n <= max_orders;
       for (int i = 0; ok && i < next.n; i++)
          ok = r32(play, next.id[i]) && r32(play, next.cmd[i]) && r32(play, next.x[i])
               && r32(play, next.y[i]);
@@ -288,7 +288,7 @@ void replay_take(int step, int player, int &num, int cmd[], int id[], int x[], i
          return;
       if (strcmp(next.tag, "ordr") == 0)
       {
-         for (int i = 0; i < next.n && num < max_marked; i++, num++)
+         for (int i = 0; i < next.n && num < max_orders; i++, num++)
          {
             id[num] = next.id[i];
             cmd[num] = next.cmd[i];

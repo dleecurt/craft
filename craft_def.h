@@ -85,6 +85,14 @@
 #define cmd_entered        51
 #define cmd_talk           52 
 
+/* Orders that change game state without going on a unit's order stack.
+   Everything a player does that affects the game goes through orders,
+   so replays and network play see it. */
+#define cmd_dismiss_msg    60   /* id: talk bubble to remove */
+#define cmd_set_limits     61   /* id: unit, x: gold limit, y: wood limit */
+#define cmd_talk_text      62   /* id: speaker, x: chunk 0..5, y: 4 bytes of text */
+#define talk_text_size     24
+
 #define land_stump         10
 #define land_bush          11
 #define land_wood          12 
@@ -355,6 +363,7 @@
 #define max_scouts_per_tents   4
 
 #define max_marked           50
+#define max_orders           (max_marked + 16) /* per player per step */
 
 #define max_num_mans         70
 

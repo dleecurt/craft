@@ -179,6 +179,15 @@ took, how many objects are alive, and the length of the X event queue
 (which should stay at a few events). `CRAFT_PROFILE=fast` also drops
 the pause between steps, to fast-forward a game for testing.
 
+### Messages
+
+When the game turns an order down it says why in the strip above the
+talk field at the bottom left: *Need gold*, *Need wood*, *Too many men*
+(the 70-man limit, which also stops new buildings), *Map is full* (every
+one of the game's 400 object slots is in use) or *No room for it* (a
+building has finished training a unit but there is no free square
+within reach; the unit comes out as soon as there is).
+
 ### Replays
 
 Every game is recorded to `~/.local/share/craft/replays/last.craftreplay`

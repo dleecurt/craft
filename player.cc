@@ -63,6 +63,7 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
       last_food = -100;
       last_num_mans = -1;
       num_mans = 0;
+      pend_num = 0;
       num_town_halls = 0;
       num_farms = 0;
       num_markets = 0;
@@ -854,8 +855,27 @@ static void drop_stray_releases(win *w)
       w->mouse(xe, ye, b);
 }
 
-void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[max_marked],
-                      int cmd_x[max_marked], int cmd_y[max_marked])
+void player::queue_order(int id, int c, int x, int y)
+{
+   for (int i = 0; i < pend_num; i++)
+      if (pend_id[i] == id && pend_cmd[i] == c)
+      { /* newer values replace an order not yet handed out */
+         pend_x[i] = x;
+         pend_y[i] = y;
+         return;
+      }
+   if (pend_num < 16)
+   {
+      pend_id[pend_num] = id;
+      pend_cmd[pend_num] = c;
+      pend_x[pend_num] = x;
+      pend_y[pend_num] = y;
+      pend_num++;
+   }
+}
+
+void player::get_cmds(bool &is_quit, int &num, int cmd[max_orders], int cmd_id[max_orders],
+                      int cmd_x[max_orders], int cmd_y[max_orders])
 
 {
    if (!is_robot)
@@ -916,7 +936,7 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
                   bool was_on_unit = on_unit;
 
                   if (u != none && objects->type[u] == object_msg)
-                     objects->t[u] = 0;
+                     queue_order(u, cmd_dismiss_msg, 0, 0); /* pointing at a bubble removes it */
                   on_unit = (u != none && objects->type[u] != object_msg
                              && (objects->type[u] != object_scout || objects->wood[u] == 0
                                  || objects->color[u] == color));
@@ -2237,26 +2257,31 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
             if (is_dial)
             { // read_limits
                int m0 = marked[act][0];
+               /* The dials work on copies; a change goes out as an order. */
+               int wl = objects->wood_limit[m0];
+               int ml = objects->money_limit[m0];
 
-               w_limit->eval(objects->wood_limit[m0]);
-               m_limit->eval(objects->money_limit[m0]);
+               w_limit->eval(wl);
+               m_limit->eval(ml);
                if (limit_zero->eval())
                { // handle_limit_press
-                  if (objects->money_limit[m0] != 0 || objects->wood_limit[m0] != 0)
+                  if (ml != 0 || wl != 0)
                   {
-                     objects->money_limit[m0] = 0;
-                     objects->wood_limit[m0] = 0;
+                     ml = 0;
+                     wl = 0;
                      limit_zero->press();
                   }
                   else
                   {
-                     objects->money_limit[m0] = 10000;
-                     objects->wood_limit[m0] = 10000;
+                     ml = 10000;
+                     wl = 10000;
                      limit_zero->press(false);
                   }
-                  w_limit->set(objects->wood_limit[m0]);
-                  m_limit->set(objects->money_limit[m0]);
+                  w_limit->set(wl);
+                  m_limit->set(ml);
                }
+               if (ml != objects->money_limit[m0] || wl != objects->wood_limit[m0])
+                  queue_order(m0, cmd_set_limits, ml, wl);
             }
          }
       }
@@ -2516,6 +2541,42 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
                }
                objects->s[u]->unshow(color);
                num_marked_ships[act]--;
+            }
+         }
+      }
+      { // hand_out_queued_orders
+         for (int i = 0; i < pend_num && num < max_orders; i++, num++)
+         {
+            cmd[num] = pend_cmd[i];
+            cmd_id[num] = pend_id[i];
+            cmd_x[num] = pend_x[i];
+            cmd_y[num] = pend_y[i];
+         }
+         pend_num = 0;
+      }
+      { // send_talk_text
+         /* The text belongs with the talk order, so every computer (and a
+            replay) shows what was typed, not its own text field. */
+         int speaker = none;
+
+         for (int i = 0; i < num && speaker == none; i++)
+            if (cmd[i] == cmd_talk)
+               speaker = cmd_id[i];
+         if (speaker != none)
+         {
+            char text[talk_text_size];
+
+            memset(text, 0, sizeof(text));
+            snprintf(text, sizeof(text), "%s", message);
+            for (int c = 0; c < talk_text_size / 4 && num < max_orders; c++, num++)
+            {
+               unsigned char *b = (unsigned char *)text + c * 4;
+
+               cmd[num] = cmd_talk_text;
+               cmd_id[num] = speaker;
+               cmd_x[num] = c;
+               cmd_y[num] = (int)((unsigned)b[0] | (unsigned)b[1] << 8 | (unsigned)b[2] << 16
+                                  | (unsigned)b[3] << 24);
             }
          }
       }
@@ -3527,7 +3588,25 @@ void player::inform(char msg[])
    }
 }
 
-void player::write(const char /* msg */[]) {}
+/* Game messages ("Need more gold", "Too many mans", ...) go in the
+   strip above the talk field, newest at the bottom.  They used to be
+   dropped, so a refused order gave no reason. */
+void player::write(const char msg[])
+{
+   if (is_robot || w_inform == NULL)
+      return;
+   if (strcmp(msg, msgs[2]) == 0)
+      return; /* the same message again: already shown */
+   strcpy(msgs[0], msgs[1]);
+   strcpy(msgs[1], msgs[2]);
+   snprintf(msgs[2], sizeof(msgs[2]), "%s", msg);
+   w_inform->set_color(gray80);
+   w_inform->fill(0, 0, w_inform_dx, w_msg_dy);
+   w_inform->set_color(red);
+   w_inform->write(2, 12, msgs[1]);
+   w_inform->write(2, 26, msgs[2]);
+   w_inform->tick();
+}
 
 /*
 void player::write (char msg [])

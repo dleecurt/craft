@@ -68,6 +68,7 @@ bool is_g_moving(int id)
 
 object_handler::object_handler()
 {
+   memset(talk_text, 0, sizeof(talk_text));
    { // init_objects
       for (int i = 0; i < max_objects; i++)
       { // init_obj
@@ -395,7 +396,7 @@ void object_handler::exec_msg(int id)
 
 void object_handler::exec_talk(int id)
 {
-   create_msg(x[id] + 1, y[id] - 1, id, players[color_player[color[id]]]->message);
+   create_msg(x[id] + 1, y[id] - 1, id, talk_text[color_player[color[id]]]);
    pop_order(id);
 }
 
@@ -750,14 +751,14 @@ void object_handler::exec_market(int id)
          { // interrupt_training
             power[id] = 0;
             pop_order(id);
-            write(color[id], "Too many mans");
+            write(color[id], "Too many men");
          }
          else if (power[id] >= 100)
-         {    // handle_train_finished
+         { // handle_train_finished
+            bool any_free_place = false;
             { // place_trader
                int xx;
                int yy;
-               bool any_free_place;
 
                { // get_free_place
                   double best_dist = DBL_MAX;
@@ -786,9 +787,17 @@ void object_handler::exec_market(int id)
                   sfx_for(sfx_ready, color[id]);
                }
             }
-            power[id] = 0;
-            support[id] = i_max(0, support[id] - 1);
-            pop_order(id);
+            if (any_free_place)
+            {
+               power[id] = 0;
+               support[id] = i_max(0, support[id] - 1);
+               pop_order(id);
+            }
+            else /* keep the finished unit until there is room for it */
+            {
+               power[id] = 100;
+               write(color[id], "No room for it");
+            }
          }
          if (power[id] % 20 == 0)
             version[id]++;
@@ -820,14 +829,14 @@ void object_handler::exec_tents(int id)
          { // interrupt_training
             power[id] = 0;
             pop_order(id);
-            write(color[id], "Too many mans");
+            write(color[id], "Too many men");
          }
          else if (power[id] >= 100)
-         {    // handle_train_finished
+         { // handle_train_finished
+            bool any_free_place = false;
             { // place_scout
                int xx;
                int yy;
-               bool any_free_place;
 
                { // get_free_place
                   double best_dist = DBL_MAX;
@@ -856,9 +865,17 @@ void object_handler::exec_tents(int id)
                   sfx_for(sfx_ready, color[id]);
                }
             }
-            power[id] = 0;
-            support[id] = i_max(0, support[id] - 1);
-            pop_order(id);
+            if (any_free_place)
+            {
+               power[id] = 0;
+               support[id] = i_max(0, support[id] - 1);
+               pop_order(id);
+            }
+            else /* keep the finished unit until there is room for it */
+            {
+               power[id] = 100;
+               write(color[id], "No room for it");
+            }
          }
          if (power[id] % 20 == 0)
             version[id]++;
@@ -890,14 +907,14 @@ void object_handler::exec_camp(int id)
          { // interrupt_training
             power[id] = 0;
             pop_order(id);
-            write(color[id], "Too many mans");
+            write(color[id], "Too many men");
          }
          else if (power[id] >= 100)
-         {    // handle_train_finished
+         { // handle_train_finished
+            bool any_free_place = false;
             { // place_knight
                int xx;
                int yy;
-               bool any_free_place;
 
                { // get_free_place
                   double best_dist = DBL_MAX;
@@ -926,9 +943,17 @@ void object_handler::exec_camp(int id)
                   sfx_for(sfx_ready, color[id]);
                }
             }
-            power[id] = 0;
-            support[id] = i_max(0, support[id] - 1);
-            pop_order(id);
+            if (any_free_place)
+            {
+               power[id] = 0;
+               support[id] = i_max(0, support[id] - 1);
+               pop_order(id);
+            }
+            else /* keep the finished unit until there is room for it */
+            {
+               power[id] = 100;
+               write(color[id], "No room for it");
+            }
          }
          if (power[id] % 20 == 0)
             version[id]++;
@@ -969,14 +994,14 @@ void object_handler::exec_mill(int id)
          { // interrupt_training
             power[id] = 0;
             pop_order(id);
-            write(color[id], "Too many mans");
+            write(color[id], "Too many men");
          }
          else if (power[id] >= 100)
-         {    // handle_train_finished
+         { // handle_train_finished
+            bool any_free_place = false;
             { // place_archer
                int xx;
                int yy;
-               bool any_free_place;
 
                { // get_free_place
                   double best_dist = DBL_MAX;
@@ -1005,9 +1030,17 @@ void object_handler::exec_mill(int id)
                   sfx_for(sfx_ready, color[id]);
                }
             }
-            power[id] = 0;
-            support[id] = i_max(0, support[id] - 1);
-            pop_order(id);
+            if (any_free_place)
+            {
+               power[id] = 0;
+               support[id] = i_max(0, support[id] - 1);
+               pop_order(id);
+            }
+            else /* keep the finished unit until there is room for it */
+            {
+               power[id] = 100;
+               write(color[id], "No room for it");
+            }
          }
          if (power[id] % 20 == 0)
             version[id]++;
@@ -1048,14 +1081,14 @@ void object_handler::exec_uni(int id)
          { // interrupt_training
             power[id] = 0;
             pop_order(id);
-            write(color[id], "Too many mans");
+            write(color[id], "Too many men");
          }
          else if (power[id] >= 100)
-         {    // handle_train_finished
+         { // handle_train_finished
+            bool any_free_place = false;
             { // place_doktor
                int xx;
                int yy;
-               bool any_free_place;
 
                { // get_free_place
                   double best_dist = DBL_MAX;
@@ -1084,9 +1117,17 @@ void object_handler::exec_uni(int id)
                   sfx_for(sfx_ready, color[id]);
                }
             }
-            power[id] = 0;
-            support[id] = i_max(0, support[id] - 1);
-            pop_order(id);
+            if (any_free_place)
+            {
+               power[id] = 0;
+               support[id] = i_max(0, support[id] - 1);
+               pop_order(id);
+            }
+            else /* keep the finished unit until there is room for it */
+            {
+               power[id] = 100;
+               write(color[id], "No room for it");
+            }
          }
          if (power[id] % 20 == 0)
             version[id]++;
@@ -1127,14 +1168,14 @@ void object_handler::exec_smith(int id)
          { // interrupt_training
             power[id] = 0;
             pop_order(id);
-            write(color[id], "Too many mans");
+            write(color[id], "Too many men");
          }
          else if (power[id] >= 100)
-         {    // handle_train_finished
+         { // handle_train_finished
+            bool any_free_place = false;
             { // place_cata
                int xx;
                int yy;
-               bool any_free_place;
 
                { // get_free_place
                   double best_dist = DBL_MAX;
@@ -1163,9 +1204,17 @@ void object_handler::exec_smith(int id)
                   sfx_for(sfx_ready, color[id]);
                }
             }
-            power[id] = 0;
-            support[id] = i_max(0, support[id] - 1);
-            pop_order(id);
+            if (any_free_place)
+            {
+               power[id] = 0;
+               support[id] = i_max(0, support[id] - 1);
+               pop_order(id);
+            }
+            else /* keep the finished unit until there is room for it */
+            {
+               power[id] = 100;
+               write(color[id], "No room for it");
+            }
          }
          if (power[id] % 20 == 0)
             version[id]++;
@@ -1258,7 +1307,8 @@ void object_handler::exec_docks(int id)
                   p = create_ship(xx, yy, color[id], dir[id], cmd[id][0] == cmd_built_bship);
 
                   sfx_for(sfx_ready, color[id]);
-                  home_id[p] = id;
+                  if (p != none)
+                     home_id[p] = id;
                   power[id] = 0;
                }
             }
@@ -1318,11 +1368,11 @@ void object_handler::exec_home(int id)
 
          power[id] += (int)players[color_player[color[id]]]->grow_speed;
          if (power[id] >= 100)
-         {    // handle_train_finished
+         { // handle_train_finished
+            bool any_free_place = false;
             { // place_unit
                int xx;
                int yy;
-               bool any_free_place;
 
                { // get_free_place
                   double best_dist = DBL_MAX;
@@ -1357,11 +1407,20 @@ void object_handler::exec_home(int id)
                      int p = create_pawn(xx, yy, color[id]);
                      sfx_for(sfx_ready, color[id]);
 
-                     home_id[p] = id;
+                     if (p != none)
+                        home_id[p] = id;
                   }
                }
             }
-            pop_order(id);
+            if (any_free_place)
+            {
+               pop_order(id);
+            }
+            else /* keep the finished unit until there is room for it */
+            {
+               power[id] = 100;
+               write(color[id], "No room for it");
+            }
          }
          if (power[id] % 20 == 0)
             version[id]++;
@@ -1373,11 +1432,11 @@ void object_handler::exec_home(int id)
 
          power[id] += (int)players[color_player[color[id]]]->grow_speed;
          if (power[id] >= 100)
-         {    // handle_train_finished
+         { // handle_train_finished
+            bool any_free_place = false;
             { // place_unit
                int xx;
                int yy;
-               bool any_free_place;
 
                { // get_free_place
                   double best_dist = DBL_MAX;
@@ -1412,11 +1471,20 @@ void object_handler::exec_home(int id)
                      int p = create_pawn(xx, yy, color[id]);
                      sfx_for(sfx_ready, color[id]);
 
-                     home_id[p] = id;
+                     if (p != none)
+                        home_id[p] = id;
                   }
                }
             }
-            pop_order(id);
+            if (any_free_place)
+            {
+               pop_order(id);
+            }
+            else /* keep the finished unit until there is room for it */
+            {
+               power[id] = 100;
+               write(color[id], "No room for it");
+            }
          }
          if (power[id] % 20 == 0)
             version[id]++;
@@ -1437,7 +1505,7 @@ int object_handler::create_worker(int p_x, int p_y, int p_color, int home)
 
       if (players[p]->num_mans >= max_num_mans)
       { // handle_to_many_mans
-         write(p_color, "Too many mans");
+         write(p_color, "Too many men");
          return none;
       }
    }
@@ -2082,7 +2150,7 @@ int object_handler::create_trader(int p_x, int p_y, int p_color, int home)
 
       if (players[p]->num_mans >= max_num_mans)
       { // handle_to_many_mans
-         write(p_color, "Too many mans");
+         write(p_color, "Too many men");
          return none;
       }
    }
@@ -3125,6 +3193,10 @@ void object_handler::exec_ship_zombi(int id)
          wx[mid] = x_center(x[mid]);
          wy[mid] = y_center(y[mid]);
          players[color_player[color[id]]]->add_sun(x[mid], y[mid], vr[mid]);
+         /* The crew goes overboard.  They used to be left as ordinary
+            men on the water, off the map grid: invisible, unselectable,
+            and still counted against the 70-man limit. */
+         create_swim(mid);
       }
       delete (s[id]);
       s[id] = NULL;
@@ -3602,7 +3674,7 @@ int object_handler::create_pawn(int p_x, int p_y, int p_color)
 
       if (players[p]->num_mans >= max_num_mans)
       { // handle_to_many_mans
-         write(p_color, "Too many mans");
+         write(p_color, "Too many men");
          return none;
       }
    }
@@ -3981,7 +4053,7 @@ int object_handler::create_scout(int p_x, int p_y, int p_color, int home_no)
 
       if (players[p]->num_mans >= max_num_mans)
       { // handle_to_many_mans
-         write(p_color, "Too many mans");
+         write(p_color, "Too many men");
          return none;
       }
    }
@@ -4251,7 +4323,7 @@ int object_handler::create_ship(int p_x, int p_y, int p_color, int p_dir, bool /
 
       if (players[p]->num_mans >= max_num_mans)
       { // handle_to_many_mans
-         write(p_color, "Too many mans");
+         write(p_color, "Too many men");
          return none;
       }
    }
@@ -4641,7 +4713,7 @@ int object_handler::create_knight(int p_x, int p_y, int p_color, int home_no, bo
 
       if (players[p]->num_mans >= max_num_mans)
       { // handle_to_many_mans
-         write(p_color, "Too many mans");
+         write(p_color, "Too many men");
          return none;
       }
    }
@@ -4935,7 +5007,7 @@ int object_handler::create_archer(int p_x, int p_y, int p_color, int home_no)
 
       if (players[p]->num_mans >= max_num_mans)
       { // handle_to_many_mans
-         write(p_color, "Too many mans");
+         write(p_color, "Too many men");
          return none;
       }
    }
@@ -5220,7 +5292,7 @@ int object_handler::create_cata(int p_x, int p_y, int p_color, int home_no)
 
       if (players[p]->num_mans >= max_num_mans)
       { // handle_to_many_mans
-         write(p_color, "Too many mans");
+         write(p_color, "Too many men");
          return none;
       }
    }
@@ -5785,7 +5857,7 @@ int object_handler::create_doktor(int p_x, int p_y, int p_color, int home_no, bo
 
       if (players[p]->num_mans >= max_num_mans)
       { // handle_to_many_mans
-         write(p_color, "Too many mans");
+         write(p_color, "Too many men");
          return none;
       }
    }
@@ -6889,7 +6961,7 @@ void object_handler::create_building_site(int type, int x, int y, int color, int
    { // check_num_mans
       if (players[p]->num_mans >= max_num_mans)
       { // handle_to_many_mans
-         write(color, "Too many mans");
+         write(color, "Too many men");
       }
    }
    { // check_place
@@ -7334,7 +7406,7 @@ bool object_handler::can_support(int id)
 {
    if (support[id] <= 0)
    {
-      write(color[id], "Too many mans");
+      write(color[id], "Too many men");
       return false;
    }
    else
@@ -7559,97 +7631,153 @@ void object_handler::new_order(int id, int order, int p1, int p2)
    bool is_idle;
    bool price_ok;
 
+   if (id < 0 || id >= max_objects || is_free[id])
+      return; /* the unit is gone (orders can arrive a little late) */
+   switch (order)
+   { /* orders that change the game but not the unit's order stack */
+   case cmd_dismiss_msg:
+      if (type[id] == object_msg)
+         t[id] = 0;
+      return;
+   case cmd_set_limits:
+      money_limit[id] = i_bound(0, p1, 10000);
+      wood_limit[id] = i_bound(0, p2, 10000);
+      version[id]++;
+      return;
+   case cmd_talk_text:
+      if (0 <= p1 && p1 < talk_text_size / 4 && color[id] >= 0)
+      {
+         char *t4 = talk_text[color_player[color[id]]] + p1 * 4;
+         unsigned v = (unsigned)p2;
+
+         for (int i = 0; i < 4; i++)
+            t4[i] = (char)((v >> (8 * i)) & 0xff);
+         talk_text[color_player[color[id]]][talk_text_size - 1] = 0;
+      }
+      return;
+   }
    delay[id] = 3;
    { // check_price_ok
+      bool table_full = false;
+
       is_idle = (cmd[id][0] == cmd_idle);
-      switch (order)
-      {
-      case cmd_heap:
-         price_ok = readmin(color[id], -price_dig, -wood_dig, true);
-         break;
-      case cmd_dig:
-         price_ok = readmin(color[id], -price_heap, -wood_heap, true);
-         break;
-      case cmd_dig_trap:
-         price_ok = readmin(color[id], -price_trap, -wood_trap, true);
-         break;
-      case cmd_train_worker:
-         price_ok = is_idle && readmin(color[id], -price_worker, 0, false);
-         break;
-      case cmd_train_trader:
-         price_ok = is_idle && readmin(color[id], -price_trader, -wood_trader, true);
-         break;
-      case cmd_train_knight:
-         price_ok
-             = can_support(id) && is_idle && readmin(color[id], -price_knight, -wood_knight, false);
-         break;
-      case cmd_train_pawn:
-         price_ok = is_idle && readmin(color[id], -price_pawn, -wood_pawn, false);
-         break;
-      case cmd_train_scout:
-         price_ok = is_idle && readmin(color[id], -price_scout, -wood_scout, true);
-         break;
-      case cmd_train_cata:
-         price_ok
-             = can_support(id) && is_idle && readmin(color[id], -price_cata, -wood_cata, false);
-         break;
-      case cmd_train_archer:
-         price_ok
-             = can_support(id) && is_idle && readmin(color[id], -price_archer, -wood_archer, false);
-         break;
-      case cmd_train_doktor:
-         price_ok
-             = can_support(id) && is_idle && readmin(color[id], -price_doktor, -wood_doktor, false);
-         break;
-      case cmd_built_camp:
-         price_ok = can_built(id, p1, p2, cmd_built_camp)
-                    && readmin(color[id], -price_camp, -wood_camp, false);
-         break;
-      case cmd_built_ship:
-         price_ok = readmin(color[id], -price_ship1, -wood_ship1, false);
-         break;
-      case cmd_built_bship:
-         price_ok = can_support(id) && readmin(color[id], -price_ship2, -wood_ship2, false);
-         break;
-      case cmd_built_market:
-         price_ok = can_built(id, p1, p2, cmd_built_market)
-                    && readmin(color[id], -price_market, -wood_market, false);
-         break;
-      case cmd_built_tents:
-         price_ok = can_built(id, p1, p2, cmd_built_tents)
-                    && readmin(color[id], -price_tents, -wood_tents, false);
-         break;
-      case cmd_built_home:
-         price_ok = can_built(id, p1, p2, cmd_built_home)
-                    && readmin(color[id], -price_home, -wood_home, false);
-         break;
-      case cmd_built_farm:
-         price_ok = can_built(id, p1, p2, cmd_built_farm)
-                    && readmin(color[id], -price_farm, -wood_farm, false);
-         break;
-      case cmd_built_mill:
-         price_ok = can_built(id, p1, p2, cmd_built_mill)
-                    && readmin(color[id], -price_mill, -wood_mill, false);
-         break;
-      case cmd_built_smith:
-         price_ok = can_built(id, p1, p2, cmd_built_smith)
-                    && readmin(color[id], -price_smith, -wood_smith, false);
-         break;
-      case cmd_built_docks:
-         price_ok = can_built(id, p1, p2, cmd_built_docks)
-                    && readmin(color[id], -price_docks, -wood_docks, false);
-         break;
-      case cmd_built_uni:
-         price_ok = can_built(id, p1, p2, cmd_built_uni)
-                    && readmin(color[id], -price_uni, -wood_uni, false);
-         break;
-      case cmd_attack:
-         price_ok = attack_possible(id, p1, p2);
-         break;
-      default:
-         price_ok = true;
-         break;
-      }
+      if (first_free == none)
+         switch (order)
+         { /* every object slot is in use: refuse before taking the price */
+         case cmd_train_worker:
+         case cmd_train_trader:
+         case cmd_train_knight:
+         case cmd_train_pawn:
+         case cmd_train_scout:
+         case cmd_train_cata:
+         case cmd_train_archer:
+         case cmd_train_doktor:
+         case cmd_built_camp:
+         case cmd_built_ship:
+         case cmd_built_bship:
+         case cmd_built_market:
+         case cmd_built_tents:
+         case cmd_built_home:
+         case cmd_built_farm:
+         case cmd_built_mill:
+         case cmd_built_smith:
+         case cmd_built_docks:
+         case cmd_built_uni:
+            write(color[id], "Map is full");
+            table_full = true;
+            break;
+         }
+      if (table_full)
+         price_ok = false;
+      else
+         switch (order)
+         {
+         case cmd_heap:
+            price_ok = readmin(color[id], -price_dig, -wood_dig, true);
+            break;
+         case cmd_dig:
+            price_ok = readmin(color[id], -price_heap, -wood_heap, true);
+            break;
+         case cmd_dig_trap:
+            price_ok = readmin(color[id], -price_trap, -wood_trap, true);
+            break;
+         case cmd_train_worker:
+            price_ok = is_idle && readmin(color[id], -price_worker, 0, false);
+            break;
+         case cmd_train_trader:
+            price_ok = is_idle && readmin(color[id], -price_trader, -wood_trader, true);
+            break;
+         case cmd_train_knight:
+            price_ok = can_support(id) && is_idle
+                       && readmin(color[id], -price_knight, -wood_knight, false);
+            break;
+         case cmd_train_pawn:
+            price_ok = is_idle && readmin(color[id], -price_pawn, -wood_pawn, false);
+            break;
+         case cmd_train_scout:
+            price_ok = is_idle && readmin(color[id], -price_scout, -wood_scout, true);
+            break;
+         case cmd_train_cata:
+            price_ok
+                = can_support(id) && is_idle && readmin(color[id], -price_cata, -wood_cata, false);
+            break;
+         case cmd_train_archer:
+            price_ok = can_support(id) && is_idle
+                       && readmin(color[id], -price_archer, -wood_archer, false);
+            break;
+         case cmd_train_doktor:
+            price_ok = can_support(id) && is_idle
+                       && readmin(color[id], -price_doktor, -wood_doktor, false);
+            break;
+         case cmd_built_camp:
+            price_ok = can_built(id, p1, p2, cmd_built_camp)
+                       && readmin(color[id], -price_camp, -wood_camp, false);
+            break;
+         case cmd_built_ship:
+            price_ok = readmin(color[id], -price_ship1, -wood_ship1, false);
+            break;
+         case cmd_built_bship:
+            price_ok = can_support(id) && readmin(color[id], -price_ship2, -wood_ship2, false);
+            break;
+         case cmd_built_market:
+            price_ok = can_built(id, p1, p2, cmd_built_market)
+                       && readmin(color[id], -price_market, -wood_market, false);
+            break;
+         case cmd_built_tents:
+            price_ok = can_built(id, p1, p2, cmd_built_tents)
+                       && readmin(color[id], -price_tents, -wood_tents, false);
+            break;
+         case cmd_built_home:
+            price_ok = can_built(id, p1, p2, cmd_built_home)
+                       && readmin(color[id], -price_home, -wood_home, false);
+            break;
+         case cmd_built_farm:
+            price_ok = can_built(id, p1, p2, cmd_built_farm)
+                       && readmin(color[id], -price_farm, -wood_farm, false);
+            break;
+         case cmd_built_mill:
+            price_ok = can_built(id, p1, p2, cmd_built_mill)
+                       && readmin(color[id], -price_mill, -wood_mill, false);
+            break;
+         case cmd_built_smith:
+            price_ok = can_built(id, p1, p2, cmd_built_smith)
+                       && readmin(color[id], -price_smith, -wood_smith, false);
+            break;
+         case cmd_built_docks:
+            price_ok = can_built(id, p1, p2, cmd_built_docks)
+                       && readmin(color[id], -price_docks, -wood_docks, false);
+            break;
+         case cmd_built_uni:
+            price_ok = can_built(id, p1, p2, cmd_built_uni)
+                       && readmin(color[id], -price_uni, -wood_uni, false);
+            break;
+         case cmd_attack:
+            price_ok = attack_possible(id, p1, p2);
+            break;
+         default:
+            price_ok = true;
+            break;
+         }
    }
    if (price_ok)
    {    // store_new
@@ -8050,29 +8178,30 @@ bool object_handler::readmin(int n_color, int d_money, int d_wood, bool anyway)
 {
    if (players[color_player[n_color]]->num_mans >= max_num_mans && !anyway)
    {
-      write(n_color, "Too many mans");
+      write(n_color, "Too many men");
       return false;
    }
    if (players[color_player[n_color]]->money + d_money < 0)
    {
-      write(n_color, "Need more gold");
+      write(n_color, "Need gold");
       return false;
    }
    if (players[color_player[n_color]]->wood + d_wood < 0)
    {
-      write(n_color, "Need more wood");
+      write(n_color, "Need wood");
       return false;
    }
    { // ok
       players[color_player[n_color]]->money += d_money;
       players[color_player[n_color]]->wood += d_wood;
-      write(n_color, "Ok i'll do it");
+      write(n_color, "Will do");
       return true;
    }
 }
 
 void object_handler::write(int color, const char msg[])
 {
+   if (getenv("CRAFT_MSG_LOG"))
    players[color_player[color]]->write(msg);
 }
 

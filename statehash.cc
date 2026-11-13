@@ -279,6 +279,7 @@ uint64_t game_state_hash_dump(FILE *out)
    f.land(unit);
    f.land(ilid);
    f.land(objects->is_a_trap);
+   f.bytes(objects->talk_text, sizeof(objects->talk_text));
    for (int x = 0; x < landscape_dx; x++)
    {
       f.bytes(landoverlay[x], sizeof(landoverlay[x][0]) * landscape_dy);
@@ -312,8 +313,50 @@ uint64_t game_state_hash_dump(FILE *out)
       {
          hash_player(f, players[i]);
          if (out != NULL)
-            fprintf(out, "player %d money %d wood %d food %g mans %d\n", i, players[i]->money,
-                    players[i]->wood, players[i]->food, players[i]->num_mans);
+         {
+            /* num_mans is kept as a running count; show the real one too */
+            int real = 0, swim = 0, ghost = 0;
+
+            for (int id = 0; id < max_objects; id++)
+               if (!objects->is_free[id] && objects->color[id] == player_color[i])
+                  switch (objects->type[id])
+                  {
+                  case object_worker:
+                  case object_knight:
+                  case object_archer:
+                  case object_pawn:
+                  case object_cata:
+                  case object_doktor:
+                  case object_trader:
+                  case object_scout:
+                  case object_ship1:
+                     real++;
+                     { /* a man that is neither on the map nor on a live ship */
+                        int sh = objects->on_ship[id];
+                        bool on_map = unit[objects->x[id]][objects->y[id]] == id;
+
+                        if (objects->type[id] == object_ship1)
+                           on_map = true; /* ships cover 4x4; skip */
+                        if (sh == -1 ? !on_map
+                                     : (sh < 0 || sh >= max_objects || objects->is_free[sh]
+                                        || objects->type[sh] != object_ship1))
+                        {
+                           ghost++;
+                           fprintf(out, "ghost %d type %d at %d,%d on_ship %d\n", id,
+                                   objects->type[id], objects->x[id], objects->y[id], sh);
+                        }
+                     }
+                     break;
+                  case object_swim:
+                     swim++;
+                     break;
+                  }
+            fprintf(
+                out,
+                "player %d money %d wood %d food %g mans %d (counted %d, swimming %d, ghosts %d)\n",
+                i, players[i]->money, players[i]->wood, players[i]->food, players[i]->num_mans,
+                real, swim, ghost);
+         }
       }
    }
    if (out != NULL)

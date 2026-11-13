@@ -21,6 +21,12 @@ ship::ship(int id)
    is_shown = false;
    with_master = true;
    is_idle = true;
+   /* Start with empty seats, so nothing depends on leftover memory. */
+   for (int i = 0; i < 14; i++)
+   {
+      unit[i] = none;
+      u_pic[i] = 0;
+   }
 }
 
 ship::~ship() {}

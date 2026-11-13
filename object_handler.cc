@@ -1842,7 +1842,12 @@ void object_handler::worker_harvest(int id)
             }
          }
          if (any_home)
-            push_order(id, cmd_move_to, x_home + i_random(0, 1), y_home + i_random(0, 1));
+         { /* draw x, then y: argument order is unspecified in C++ */
+            int rx = i_random(0, 1);
+            int ry = i_random(0, 1);
+
+            push_order(id, cmd_move_to, x_home + rx, y_home + ry);
+         }
          else
             new_order(id, cmd_idle, 0, 0);
       }
@@ -2056,7 +2061,12 @@ void object_handler::worker_upgrade(int id)
       refresh(x[id], y[id]);
    }
    else if (any_market)
-      push_order(id, cmd_move_to, x_market + i_random(0, 1), y_market + i_random(0, 1));
+   { /* draw x, then y: argument order is unspecified in C++ */
+      int rx = i_random(0, 1);
+      int ry = i_random(0, 1);
+
+      push_order(id, cmd_move_to, x_market + rx, y_market + ry);
+   }
    else
       new_order(id, cmd_idle, 0, 0);
 }
@@ -2409,7 +2419,12 @@ void object_handler::trader_trade(int id)
          refresh(x[id], y[id]);
       }
       else if (any_market)
-         push_order(id, cmd_move_to, x_market + i_random(0, 1), y_market + i_random(0, 1));
+      { /* draw x, then y: argument order is unspecified in C++ */
+         int rx = i_random(0, 1);
+         int ry = i_random(0, 1);
+
+         push_order(id, cmd_move_to, x_market + rx, y_market + ry);
+      }
       else
          new_order(id, cmd_idle, 0, 0);
    }
@@ -3945,7 +3960,12 @@ void object_handler::pawn_upgrade(int id)
       refresh(x[id], y[id]);
    }
    else if (any_tents)
-      push_order(id, cmd_move_to, x_tents + i_random(0, 1), y_tents + i_random(0, 1));
+   { /* draw x, then y: argument order is unspecified in C++ */
+      int rx = i_random(0, 1);
+      int ry = i_random(0, 1);
+
+      push_order(id, cmd_move_to, x_tents + rx, y_tents + ry);
+   }
    else
       new_order(id, cmd_idle, 0, 0);
 }

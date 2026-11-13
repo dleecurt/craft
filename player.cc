@@ -213,14 +213,14 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
          load_pics();
       }
       { // open_quit
-         b_quit = new button(w_status, "quit", 90, 640);
+         b_quit = new button(w_status, "quit", 130, 640);
       }
       { // open_pause
          b_pause = new button(w_status, "pause", 20, 640);
          b_pause_down = false;
       }
-      { // open_save
-         b_save = new button(w_status, "save", 20, 610);
+      {                                                  // open_save
+         b_save = new button(w_status, "save", 78, 640); /* one row: pause, save, quit */
       }
       { // perhaps_open_debug
          is_debug = false;
@@ -250,12 +250,16 @@ void player::show_pace()
 
    if (is_robot)
       return;
-   snprintf(text, sizeof(text), sound_muted ? "pace %3d/s  muted" : "pace %3d/s  (+/-)", game_pace);
+   /* Beside Gold/Wood/Food/Men, whose text ends near x 121: the command
+      list above can reach y 620, so nothing else of ours may go there. */
+   snprintf(text, sizeof(text), "%d/s", game_pace);
    w_status->set_background(gray80);
    w_status->set_color(gray80);
-   w_status->fill(18, 578, 180, 22);
+   w_status->fill(128, 664, 70, 54);
    w_status->set_color(black);
-   w_status->write(20, 594, text);
+   w_status->write(134, 680, "pace");
+   w_status->write(134, 696, text);
+   w_status->write(134, 712, sound_muted ? "muted" : "(+/-)");
    w_status->tick();
 }
 
@@ -2632,7 +2636,7 @@ void player::clear_status()
          num_cmds = 0;
       }
       w_status->set_color(gray80);
-      w_status->fill(10, 10, 180, 560); /* stop above the pace line and save button */
+      w_status->fill(10, 10, 180, 630); /* the whole command list, down to y 640 */
       if (is_dial)
       { // close_dial
          delete (m_limit);

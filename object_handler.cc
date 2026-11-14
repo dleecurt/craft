@@ -105,6 +105,14 @@ object_handler::~object_handler() {}
 
 void object_handler::delay_wait(int id)
 {
+   if (cmd[id][0] == cmd_wait)
+   { /* already waiting: wait longer, not twice.  The computer player
+        asked again and again, faster than the waits ran out, until the
+        unit's order stack overflowed and the game froze. */
+      gx[id][0] = i_max(gx[id][0], delay[id] + i_random(0, 5));
+      delay[id] = i_min(500, (int)((double)delay[id] * 2));
+      return;
+   }
    push_order(id, cmd_wait, delay[id] + i_random(0, 5), 0);
    delay[id] = i_min(500, (int)((double)delay[id] * 2));
 }
@@ -7381,6 +7389,9 @@ void object_handler::push_order(int id, int order, int p1, int p2)
    push(order, cmd[id]);
    push(p1, gx[id]);
    push(p2, gy[id]);
+   /* A full stack drops its oldest order; the bottom must stay idle,
+      or clearing the stack (which pops until idle) never ends. */
+   cmd[id][stack_size - 1] = cmd_idle;
    version[id]++;
 }
 
@@ -7397,6 +7408,7 @@ void object_handler::pop_order(int id)
       pop(cmd[id]);
       pop(gx[id]);
       pop(gy[id]);
+      cmd[id][stack_size - 1] = cmd_idle; /* see push_order */
       version[id]++;
    }
 }

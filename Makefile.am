@@ -78,6 +78,8 @@ libcraft_a_SOURCES = \
 
 bin_PROGRAMS = craft
 craft_SOURCES = craft.cc
+# names in the crash report's backtrace
+craft_LDFLAGS = -rdynamic
 
 # ----------------------------------------------------------------------
 # Art tools (installed with a craft- prefix)

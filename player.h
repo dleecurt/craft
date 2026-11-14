@@ -56,6 +56,9 @@ class player
       people playing on another computer (network play, replays shown
       without a screen); their side is still played in full here. */
    bool   has_view;
+   /* the host's side is out of a network game, but the host keeps the
+      game running for the others and watches the whole map */
+   bool   watching;
    int    last_time; 
 
    bool   show_ship;

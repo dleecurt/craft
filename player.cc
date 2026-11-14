@@ -61,6 +61,7 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
       num_man = 0;
       is_robot = p_robot;
       has_view = !p_robot && p_view;
+      watching = false;
       last_money = -1;
       last_wood = -1;
       last_food = -100;
@@ -330,6 +331,22 @@ void player::deactivate()
             }
       }
    }
+   if (has_view && net_role == net_host && p_no == net_seat)
+   { // keep_watching
+      /* The host's game must run on for the others: keep the screen,
+         show the whole map, take no more orders. */
+      for (int k = 0; k < 5; k++)
+      {
+         num_marked[k] = 0;
+         num_marked_ships[k] = 0;
+      }
+      watching = true;
+      active = false;
+      show();
+      show_overview();
+      write("You are out:\nwatching");
+      return;
+   }
    if (has_view)
    {
       { // delete_pics
@@ -478,7 +495,7 @@ void player::show(int lx0, int ly0, int lx, int ly, bool extra_mark)
 {
    if (has_view && (0 <= lx && lx < landscape_dx && 0 <= ly && ly < landscape_dy))
    { // perform_show
-      if (!is_suny || sun_cnt[lx][ly] > 0)
+      if (!is_suny || watching || sun_cnt[lx][ly] > 0)
       { // show_field
          int wx = (lx - x0) * pic_dx;
          int wy = (ly - y0) * pic_dy;
@@ -701,7 +718,7 @@ void player::show_overview(int lx, int ly)
 {
    if (has_view && (0 <= lx && lx < landscape_dx && 0 <= ly && ly < landscape_dy))
    { // perform_show
-      if ((!is_suny || sun_cnt[lx][ly] > 0)
+      if ((!is_suny || watching || sun_cnt[lx][ly] > 0)
           || (unit[lx][ly] != none && objects->type[unit[lx][ly]] == object_mine))
       { // show_field
          int xx = lx * olandscale;

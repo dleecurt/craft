@@ -1060,7 +1060,7 @@ static void net_note(const char msg[])
    char text[300];
    const char *sp = strchr(msg, ' ');
 
-   if (!active[net_seat] || !players[net_seat]->has_view)
+   if (!(active[net_seat] || players[net_seat]->watching) || !players[net_seat]->has_view)
       return;
    if (sp != NULL)
       snprintf(text, sizeof(text), "%.*s\n%s", (int)(sp - msg), msg, sp + 1);
@@ -1368,12 +1368,21 @@ int main(int argc, char **argv)
             /* Orders given now run net_delay steps later, on every
                computer at once; a step runs only when everyone's orders
                for it are here. */
-            if (active[net_seat] && players[net_seat]->has_view)
+            if ((active[net_seat] || players[net_seat]->watching) && players[net_seat]->has_view)
             { // gather_my_orders
                net_orders o;
                bool gives_up = false;
 
                players[net_seat]->get_cmds(gives_up, o.n, o.cmd, o.id, o.x, o.y);
+               if (!active[net_seat])
+               { /* watching: no orders; quitting ends the game for all */
+                  o.n = 0;
+                  if (gives_up)
+                  {
+                     stop_requested = 1;
+                     break;
+                  }
+               }
                if (gives_up && o.n < max_orders)
                {
                   o.cmd[o.n] = cmd_give_up;
@@ -1399,7 +1408,8 @@ int main(int argc, char **argv)
             { // show_network_news
                const char *m = net_message();
 
-               if (m != NULL && active[net_seat] && players[net_seat]->has_view)
+               if (m != NULL && (active[net_seat] || players[net_seat]->watching)
+                   && players[net_seat]->has_view)
                {
                   players[net_seat]->write(m);
                   players[net_seat]->show_pace(); /* the host may have changed it */
@@ -1437,7 +1447,8 @@ int main(int argc, char **argv)
             { // wait_for_the_others
                const char *st = net_status();
 
-               if (st != NULL && active[net_seat] && players[net_seat]->has_view)
+               if (st != NULL && (active[net_seat] || players[net_seat]->watching)
+                   && players[net_seat]->has_view)
                   players[net_seat]->write(st);
                net_poll(4);
                continue;
@@ -1670,7 +1681,7 @@ int main(int argc, char **argv)
                   net_poll(0);
                   was = true;
                   for (int i = 0; i < max_players; i++)
-                     if (active[i] && players[i]->has_view)
+                     if ((active[i] || players[i]->watching) && players[i]->has_view)
                         players[i]->handle_pause();
                   delay(min_cycle_time); /* don't spin a CPU core while paused */
                }
@@ -1681,7 +1692,7 @@ int main(int argc, char **argv)
             { // pause_a_bit
                was = true;
                for (int i = 0; i < max_players; i++)
-                  if (active[i] && players[i]->has_view)
+                  if ((active[i] || players[i]->watching) && players[i]->has_view)
                      players[i]->handle_pause();
             }
          }

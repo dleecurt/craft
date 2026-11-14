@@ -7218,7 +7218,7 @@ void object_handler::refresh(int lx, int ly)
 
    for (int i = 0; i < num_players; i++)
    { // show_one_player
-      if (players[i]->active)
+      if (players[i]->active || players[i]->watching)
       { // perform_show
          players[i]->show(lx, ly);
       }

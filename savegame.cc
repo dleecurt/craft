@@ -55,7 +55,7 @@ static gzFile restore_file = NULL;
 /* Files and names                                                      */
 /*----------------------------------------------------------------------*/
 
-static void make_dirs(const char path[])
+void make_dirs(const char path[])
 {
    char p[1024];
 
@@ -355,6 +355,7 @@ static bool restore_player(gzFile f, player *live)
          live->num_marked_ships[k] = 0;
       }
       live->last_num_mans = -1;
+      live->pend_num = 0;
       live->last_money = -1;
       live->last_wood = -1;
       live->last_food = -1000;
@@ -453,6 +454,26 @@ static bool write_all(gzFile f, const char label[])
    return true;
 }
 
+static bool read_header(gzFile f, save_header &h);
+
+bool save_game_into(gzFile f)
+{
+   return write_all(f, "replay");
+}
+
+bool restore_game_globals_from(gzFile f)
+{
+   save_header h;
+   bool writing = false;
+
+   if (!read_header(f, h))
+   {
+      fprintf(stderr, "craft: this replay was made by a different version of Craft\n");
+      return false;
+   }
+   return globals_io(f, writing);
+}
+
 bool save_game(const char save_name[], char error[256])
 {
    char clean[128];
@@ -536,7 +557,16 @@ bool restore_game_globals(const char save_name[])
 
 bool restore_game_objects()
 {
-   gzFile f = restore_file;
+   bool ok = restore_file != NULL && restore_game_objects_from(restore_file);
+
+   if (restore_file != NULL)
+      gzclose(restore_file);
+   restore_file = NULL;
+   return ok;
+}
+
+bool restore_game_objects_from(gzFile f)
+{
    bool writing = false;
    bool ok = true;
 
@@ -579,8 +609,6 @@ bool restore_game_objects()
       if (ok)
          seed48(rng);
    }
-   gzclose(restore_file);
-   restore_file = NULL;
    if (ok)
       for (int i = 0; i < max_players; i++)
          if (active[i])

@@ -20,7 +20,10 @@
 #include "dial.h"
 #include "scroller.h"
 #include "buttons.h"
+#include <signal.h>
+
 #include "ship.h"
+#include "replay.h"
 #include "option_menu.h"
 #include "xtimer.h"
 #include "screens.h"
@@ -1024,15 +1027,36 @@ static void prof_step(double t_cmds, double t_exec, double t_all)
 
 static void usage(FILE *f)
 {
-   fprintf(f, "usage: craft [-scale N]\n"
-              "  -scale N   zoom the game N times (1 to 4, e.g. 1.5) for this run only;\n"
-              "             without it, the zoom set on the start menu's Details page\n"
-              "             is used (by default chosen from the screen size)\n");
+   fprintf(f, "usage: craft [-scale N] [--record FILE | --replay FILE]\n"
+              "  -scale N        zoom the game N times (1 to 4, e.g. 1.5) for this run only;\n"
+              "                  without it, the zoom set on the start menu's Details page\n"
+              "                  is used (by default chosen from the screen size)\n"
+              "  --record FILE   record the game to FILE (by default every game is\n"
+              "                  recorded to ~/.local/share/craft/replays/last.craftreplay;\n"
+              "                  CRAFT_REPLAY=off turns that off)\n"
+              "  --replay FILE   play a recorded game back, check that it plays out\n"
+              "                  exactly as recorded, and print the result\n");
+}
+
+/* Ctrl-C or kill: finish the current step and end the game cleanly, so
+   the replay is complete.  A second signal ends the program at once. */
+static volatile sig_atomic_t stop_requested = 0;
+
+static void on_stop_signal(int sig)
+{
+   if (stop_requested)
+   {
+      signal(sig, SIG_DFL);
+      raise(sig);
+   }
+   stop_requested = 1;
 }
 
 int main(int argc, char **argv)
 {
    double act_speed;
+   const char *record_path = NULL;
+   const char *replay_path = NULL;
 
    for (int i = 1; i < argc; i++)
    { // read_arguments
@@ -1052,6 +1076,10 @@ int main(int argc, char **argv)
             exit(2);
          }
       }
+      else if (strcmp(argv[i], "--record") == 0 && i + 1 < argc)
+         record_path = argv[++i];
+      else if (strcmp(argv[i], "--replay") == 0 && i + 1 < argc)
+         replay_path = argv[++i];
       else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)
       {
          usage(stdout);
@@ -1073,15 +1101,30 @@ int main(int argc, char **argv)
       music_menu();
    }
    { // init_players
-      int tic;
+      int tic = 0;
 
-      show_splash();
-      { // get_params
+      if (replay_path != NULL)
+      { // open_replay
+         if (!replay_open(replay_path))
+            exit(1);
+         restoring = true;
+         /* Show every human side on this display. */
          for (int i = 0; i < max_players; i++)
-            active[i] = false;
-         option_menu(act_speed, tic);
+            if (active[i] && strcmp(host[i], "-") != 0)
+               strcpy(host[i], "");
       }
-      if (restoring)
+      else
+      {
+         show_splash();
+         { // get_params
+            for (int i = 0; i < max_players; i++)
+               active[i] = false;
+            option_menu(act_speed, tic);
+         }
+      }
+      if (replay_path != NULL)
+         printf("playing back replay \"%s\"\n", replay_path);
+      else if (restoring)
       { // load_options_and_land
          if (!restore_game_globals(restore_name))
          {
@@ -1095,12 +1138,22 @@ int main(int argc, char **argv)
          init_speed(act_speed);
       }
       init_craft(host, name, speed);
-      if (restoring)
+      if (replay_path != NULL)
+         ;
+      else if (restoring)
          printf("restoring game \"%s\"\n", restore_name);
       else
          printf("starting game with seed %d\n", tic);
    }
-   if (restoring)
+   if (replay_path != NULL)
+   { // load_replay_objects
+      if (!replay_open_objects())
+      {
+         fprintf(stderr, "craft: the replay \"%s\" is damaged\n", replay_path);
+         exit(1);
+      }
+   }
+   else if (restoring)
    { // load_objects_and_players
       if (!restore_game_objects())
       {
@@ -1110,6 +1163,15 @@ int main(int argc, char **argv)
    }
    else
       set_initial_objects();
+   if (replay_path == NULL)
+   { // start_recording
+      const char *e = getenv("CRAFT_REPLAY");
+
+      if (record_path != NULL)
+         replay_record_start(record_path);
+      else if (e == NULL || strcmp(e, "off") != 0)
+         replay_record_start(replay_default_path());
+   }
    music_game();
    { // exec_craft
       bool quit = false;
@@ -1119,7 +1181,9 @@ int main(int argc, char **argv)
       { // set_cnt
          cnt = num_players;
       }
-      while (!quit)
+      signal(SIGINT, on_stop_signal);
+      signal(SIGTERM, on_stop_signal);
+      while (!quit && !stop_requested)
       { // cycle
          int suspend = -1;
          double prof_t0 = profiling() ? now_ms() : 0;
@@ -1128,15 +1192,23 @@ int main(int argc, char **argv)
             for (int pi = 0; pi < max_players; pi++)
                if (active[pi] && !players[pi]->is_robot)
                { // read_player_cmd
-                  int cmd[max_marked];
-                  int x[max_marked];
-                  int y[max_marked];
-                  int id[max_marked];
+                  int cmd[max_orders];
+                  int x[max_orders];
+                  int y[max_orders];
+                  int id[max_orders];
                   int num;
                   int suspend = -1;
                   bool is_suspend = false;
 
                   players[pi]->get_cmds(is_suspend, num, cmd, id, x, y);
+                  if (replay_playing) /* the recording decides, not the viewer */
+                     replay_take(ticker, pi, num, cmd, id, x, y, is_suspend);
+                  else
+                  {
+                     replay_record_orders(ticker, pi, num, id, cmd, x, y);
+                     if (is_suspend)
+                        replay_record_give_up(ticker, pi);
+                  }
                   { // perhaps_exec_player_cmd
                      for (int p = 0; p < num; p++)
                      { // exec_player_cmd
@@ -1171,7 +1243,7 @@ int main(int argc, char **argv)
                                  for (int j = 0; j < max_players; j++)
                                  {
                                     m_active[j] = false;
-                                    if (active[j] && !players[j]->is_robot)
+                                    if (active[j] && !players[j]->is_robot && !replay_playing)
                                     { // tell_to_player
                                        tell(host[j], players[j]->w_land, w[j], msg);
                                        b[j] = new button(w[j], "OK", 120, 80);
@@ -1182,7 +1254,7 @@ int main(int argc, char **argv)
                               { // ack_from_players
                                  bool any_active = true;
 
-                                 while (any_active)
+                                 while (any_active && !stop_requested)
                                  { // check_buttons
                                     any_active = false;
                                     for (int j = 0; j < max_players; j++)
@@ -1217,7 +1289,7 @@ int main(int argc, char **argv)
                                     for (int j = 0; j < max_players; j++)
                                     {
                                        m_active[j] = false;
-                                       if (active[j] && !players[j]->is_robot)
+                                       if (active[j] && !players[j]->is_robot && !replay_playing)
                                        { // tell_to_player
                                           tell(host[j], players[j]->w_land, w[j], msg);
                                           b[j] = new button(w[j], "OK", 120, 80);
@@ -1228,7 +1300,7 @@ int main(int argc, char **argv)
                                  { // ack_from_players
                                     bool any_active = true;
 
-                                    while (any_active)
+                                    while (any_active && !stop_requested)
                                     { // check_buttons
                                        any_active = false;
                                        for (int j = 0; j < max_players; j++)
@@ -1257,7 +1329,7 @@ int main(int argc, char **argv)
                                     for (int j = 0; j < max_players; j++)
                                     {
                                        m_active[j] = false;
-                                       if (active[j] && !players[j]->is_robot)
+                                       if (active[j] && !players[j]->is_robot && !replay_playing)
                                        { // tell_to_player
                                           tell(host[j], players[j]->w_land, w[j], msg);
                                           b[j] = new button(w[j], "OK", 120, 80);
@@ -1268,7 +1340,7 @@ int main(int argc, char **argv)
                                  { // ack_from_players
                                     bool any_active = true;
 
-                                    while (any_active)
+                                    while (any_active && !stop_requested)
                                     { // check_buttons
                                        any_active = false;
                                        for (int j = 0; j < max_players; j++)
@@ -1324,6 +1396,7 @@ int main(int argc, char **argv)
             {
                objects->exec();
                ticker++;
+               replay_after_step(ticker);
             }
          }
          double t_exec_done = profiling() ? now_ms() : 0;
@@ -1349,7 +1422,7 @@ int main(int argc, char **argv)
                      for (int j = 0; j < max_players; j++)
                      {
                         m_active[j] = false;
-                        if (active[j] && !players[j]->is_robot)
+                        if (active[j] && !players[j]->is_robot && !replay_playing)
                         { // tell_to_player
                            tell(host[j], players[j]->w_land, w[j], msg);
                            b[j] = new button(w[j], "OK", 120, 80);
@@ -1360,7 +1433,7 @@ int main(int argc, char **argv)
                   { // ack_from_players
                      bool any_active = true;
 
-                     while (any_active)
+                     while (any_active && !stop_requested)
                      { // check_buttons
                         any_active = false;
                         for (int j = 0; j < max_players; j++)
@@ -1395,7 +1468,7 @@ int main(int argc, char **argv)
                         for (int j = 0; j < max_players; j++)
                         {
                            m_active[j] = false;
-                           if (active[j] && !players[j]->is_robot)
+                           if (active[j] && !players[j]->is_robot && !replay_playing)
                            { // tell_to_player
                               tell(host[j], players[j]->w_land, w[j], msg);
                               b[j] = new button(w[j], "OK", 120, 80);
@@ -1406,7 +1479,7 @@ int main(int argc, char **argv)
                      { // ack_from_players
                         bool any_active = true;
 
-                        while (any_active)
+                        while (any_active && !stop_requested)
                         { // check_buttons
                            any_active = false;
                            for (int j = 0; j < max_players; j++)
@@ -1435,7 +1508,7 @@ int main(int argc, char **argv)
                         for (int j = 0; j < max_players; j++)
                         {
                            m_active[j] = false;
-                           if (active[j] && !players[j]->is_robot)
+                           if (active[j] && !players[j]->is_robot && !replay_playing)
                            { // tell_to_player
                               tell(host[j], players[j]->w_land, w[j], msg);
                               b[j] = new button(w[j], "OK", 120, 80);
@@ -1446,7 +1519,7 @@ int main(int argc, char **argv)
                      { // ack_from_players
                         bool any_active = true;
 
-                        while (any_active)
+                        while (any_active && !stop_requested)
                         { // check_buttons
                            any_active = false;
                            for (int j = 0; j < max_players; j++)
@@ -1498,6 +1571,9 @@ int main(int argc, char **argv)
          }
       }
    }
+   replay_record_close();
+   replay_playback_end(ticker);
    finish_craft();
-   show_credits();
+   if (!stop_requested)
+      show_credits();
 }

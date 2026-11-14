@@ -52,6 +52,8 @@ libcraft_a_SOURCES = \
 	ppm_handler.cc ppm_handler.h \
 	robot.cc robot.h \
 	savegame.cc savegame.h \
+	replay.cc replay.h \
+	statehash.cc statehash.h \
 	screens.cc screens.h \
 	scroller.cc scroller.h \
 	selector.cc selector.h \

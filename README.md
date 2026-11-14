@@ -179,6 +179,39 @@ took, how many objects are alive, and the length of the X event queue
 (which should stay at a few events). `CRAFT_PROFILE=fast` also drops
 the pause between steps, to fast-forward a game for testing.
 
+### Network play (in progress)
+
+Up to four people play one game, each on their own computer. One
+computer hosts; the others join. Every computer runs the whole game in
+lockstep: each sends only its own player's orders, the host passes
+everyone's orders around, and every 40 steps the guests check that
+their game still matches the host's.
+
+For now hosting works from the command line; a start-menu lobby and
+SSH come next. On the host:
+
+    craft --host
+
+Set up the players on the start menu as usual: the first person seat
+is yours and every further person seat is a guest's (at most one
+computer player). After **Play** the host waits for the guests and
+prints a join code. On each guest:
+
+    craft --join HOST --code CODE --name YOURNAME
+
+The host only accepts connections from its own computer (127.0.0.1,
+port 47800). Until Craft starts SSH for you, a guest on another
+computer forwards the port with SSH first and then joins "localhost":
+
+    ssh -N -L 47800:localhost:47800 user@host &
+    craft --join localhost --code CODE --name YOURNAME
+
+During play only the host can pause or change the pace; guests are
+told. A guest who quits gives up and their side falls; if the host
+quits or loses the connection, the game ends for everyone. A guest
+whose game stops matching the host's is dropped ("out of sync") and
+their side falls. Both computers need the same build of Craft.
+
 ### Messages
 
 When the game turns an order down it says why in the strip above the

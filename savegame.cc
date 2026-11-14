@@ -36,7 +36,11 @@ bool restoring = false;
 char restore_name[128] = "";
 
 #define save_magic "CRAFTSAV"
-#define save_version 1
+/* Bump whenever a saved class (player, object_handler, robot, ship,
+   field) gains, loses or reorders members: the size check alone misses
+   a change that fits into padding, and the file would load wrongly.
+   2: player::watching, object_handler::talk_text. */
+#define save_version 2
 #define save_suffix ".craftsave"
 #define num_sizes 12
 
@@ -342,6 +346,7 @@ static bool restore_player(gzFile f, player *live)
    KEEP(live, old, is_dial);
    KEEP(live, old, rob);
    KEEP(live, old, has_view);
+   KEEP(live, old, watching);
    KEEP(live, old, p_pressed);
    KEEP(live, old, p_button);
    KEEP(live, old, host);

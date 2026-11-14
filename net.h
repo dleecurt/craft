@@ -51,10 +51,24 @@ struct net_orders
 
 /*---- host ------------------------------------------------------------*/
 
-/* Listen for guests and wait until every seat in want[] (player
-   numbers) is taken.  Fills in the guests' names.  The join code is
-   printed for the host to pass on.  False if interrupted. */
-bool net_host_wait(int port, const int want[], int num_want, char names[][128]);
+/* Start listening for guests (on 127.0.0.1 only) and make a join code. */
+bool net_host_listen(int port);
+const char *net_join_code();
+
+/* The lobby: take in guests who arrive, turn away the ones that do not
+   fit.  Returns how many guests are waiting (at most max_guests), with
+   their names in the order they came. */
+int net_lobby_poll(int max_guests, char names[][128]);
+
+/* Tell the waiting guests what the lobby looks like. */
+void net_lobby_send(const char lines[][128], int num_lines, const char summary[]);
+
+/* Play: the first num waiting guests take seats seat_of[0..num-1]; any
+   others are sent away. */
+void net_lobby_seat(const int seat_of[], int num);
+
+/* The host gave up hosting: send everyone away (with why, if not NULL). */
+void net_lobby_close(const char why[]);
 
 /* The game is set up: send every guest the starting state. */
 bool net_host_start(int first_step);
@@ -65,11 +79,29 @@ void net_send_pace(int pace);
 
 /*---- guest -----------------------------------------------------------*/
 
-/* Connect to a host at addr ("name" or "name:port"), introduce
-   ourselves and wait for the game to start.  On success the starting
-   state can be read from the returned file; net_seat says which player
-   we are.  NULL (with a message on stderr) on failure. */
-gzFile net_join(const char addr[], const char code[], const char name[]);
+enum
+{
+   net_lobby_waiting, /* nothing new */
+   net_lobby_changed, /* new seat lines */
+   net_lobby_started, /* the game starts: state is ready to read */
+   net_lobby_ended    /* turned away or disconnected: why says why */
+};
+
+/* Connect to a host: addr "user@host" goes through ssh (ssh -W, or the
+   command in $CRAFT_SSH); a plain "host" or "host:port" connects
+   directly (same computer, or a tunnel made by hand). */
+bool net_guest_connect(const char addr[], int port, const char code[], const char name[]);
+
+/* Wait up to ms for the host; see the enum above. */
+int net_guest_lobby_poll(int ms, gzFile &state, char lines[][128], int &num_lines,
+                         char summary[256], char why[256]);
+
+/* Leave the lobby. */
+void net_guest_cancel();
+
+/* Connect and wait for the game to start, with no screen (--join on the
+   command line without the join window).  NULL on failure. */
+gzFile net_join(const char addr[], int port, const char code[], const char name[]);
 
 /*---- both, during play -----------------------------------------------*/
 

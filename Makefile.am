@@ -54,6 +54,7 @@ libcraft_a_SOURCES = \
 	savegame.cc savegame.h \
 	replay.cc replay.h \
 	net.cc net.h \
+	lobby.cc lobby.h \
 	statehash.cc statehash.h \
 	screens.cc screens.h \
 	scroller.cc scroller.h \
@@ -154,3 +155,6 @@ dist-hook:
 # exactly as recorded (see tests/replay-check.sh).
 TESTS = tests/replay-check.sh
 EXTRA_DIST += tests/replay-check.sh tests/four-players.craftreplay tests/give-up.craftreplay
+
+# Prepares a computer to host network games (the restricted SSH account).
+dist_bin_SCRIPTS = craft-host-setup

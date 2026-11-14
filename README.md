@@ -179,38 +179,52 @@ took, how many objects are alive, and the length of the X event queue
 (which should stay at a few events). `CRAFT_PROFILE=fast` also drops
 the pause between steps, to fast-forward a game for testing.
 
-### Network play (in progress)
+### Network play
 
-Up to four people play one game, each on their own computer. One
-computer hosts; the others join. Every computer runs the whole game in
-lockstep: each sends only its own player's orders, the host passes
-everyone's orders around, and every 40 steps the guests check that
-their game still matches the host's.
+Up to four people play one game, each on their own computer, on the
+same local network. One computer hosts; the others join through SSH.
+Every computer runs the whole game in lockstep: each sends only its own
+player's orders, the host passes everyone's orders around, and every 40
+steps the guests check that their game still matches the host's. Both
+computers need the same build of Craft.
 
-For now hosting works from the command line; a start-menu lobby and
-SSH come next. On the host:
+**Setting up the host (once).** Guests reach the host's game through
+SSH, all with one restricted account, `craft`, that can open the game's
+port on the host and nothing else: no shell, no files. As root:
 
-    craft --host
+    craft-host-setup apply                 # the account and sshd settings
+    craft-host-setup add-key guest.pub     # once for each guest's public key
+    craft-host-setup check                 # what is in place
 
-Set up the players on the start menu as usual: the first person seat
-is yours and every further person seat is a guest's (at most one
-computer player). After **Play** the host waits for the guests and
-prints a join code. On each guest:
+(`craft-host-setup print` shows the settings to apply by hand
+instead.) Guests need an SSH key (`ssh-keygen -t ed25519`) and to send
+the host their `~/.ssh/id_ed25519.pub`.
 
-    craft --join HOST --code CODE --name YOURNAME
+**Hosting.** On the start menu press **host** (a notice explains that
+the host controls the game, and that the game ends for everyone if the
+host leaves), set up the map as usual, and press **Play**. The lobby
+shows four seats: yours, and three that are **Open** (for a guest),
+**Computer** (at most one) or **Closed**; **change** cycles them. It also
+shows the join code. When every Open seat has a guest, press **play**.
+`craft --host` starts with **host** already pressed.
 
-The host only accepts connections from its own computer (127.0.0.1,
-port 47800). Until Craft starts SSH for you, a guest on another
-computer forwards the port with SSH first and then joins "localhost":
+**Joining.** On the start menu press **join**, enter `craft@HOSTNAME`,
+the join code and your name, and press **join**. Craft starts SSH in
+the background (if your key has a passphrase, SSH asks for it in the
+terminal Craft was started from) and shows the lobby until the host
+starts the game. Or from the command line:
 
-    ssh -N -L 47800:localhost:47800 user@host &
-    craft --join localhost --code CODE --name YOURNAME
+    craft --join craft@HOSTNAME --code FJORD-4821 --name Lee
 
-During play only the host can pause or change the pace; guests are
+A plain `--join HOSTNAME` (no `user@`) connects without SSH, which only
+works on the host itself or through a tunnel you made
+(`ssh -N -L 47800:localhost:47800 user@host`).
+
+**During play** only the host can pause or change the pace; guests are
 told. A guest who quits gives up and their side falls; if the host
-quits or loses the connection, the game ends for everyone. A guest
-whose game stops matching the host's is dropped ("out of sync") and
-their side falls. Both computers need the same build of Craft.
+quits or loses the connection, the game ends for everyone. If the
+host's own side falls, the host watches the rest of the game. A guest
+whose game stops matching the host's is dropped ("out of sync").
 
 ### Messages
 

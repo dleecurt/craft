@@ -1,0 +1,188 @@
+#!/bin/sh
+# craft-host-setup: prepare this computer to host network games of Craft.
+#
+# Guests reach the host's game through SSH, all with one restricted
+# account, "craft", that can do nothing but open the game's port on this
+# computer: no shell, no files, no other ports.
+#
+#   craft-host-setup check          what is in place and what is missing
+#   craft-host-setup print          the settings, to apply by hand
+#   craft-host-setup apply          create the account, add the sshd
+#                                   settings, reload sshd (as root)
+#   craft-host-setup add-key FILE   let a guest in: add their public key
+#                                   (FILE, or - for standard input; as root)
+#
+# Works on Linux and NetBSD.  Set CRAFT_PORT if the game uses a port
+# other than 47800, SSHD_CONFIG and SSHD for an sshd elsewhere.
+
+set -u
+
+user=craft
+port=${CRAFT_PORT:-47800}
+sshd_config=${SSHD_CONFIG:-/etc/ssh/sshd_config}
+marker="# craft network play (craft-host-setup)"
+key_opts="restrict,port-forwarding,permitopen=\"localhost:$port\""
+
+say() { printf '%s\n' "$*"; }
+die() { printf 'craft-host-setup: %s\n' "$*" >&2; exit 1; }
+
+need_root() {
+    [ "$(id -u)" -eq 0 ] || die "this needs root (try: sudo $0 $*)"
+}
+
+nologin_shell() {
+    for s in /usr/sbin/nologin /sbin/nologin /usr/bin/false /bin/false; do
+        [ -x "$s" ] && { echo "$s"; return; }
+    done
+    echo /bin/false
+}
+
+home_of() {
+    # getent is not on every system; fall back to /etc/passwd
+    if command -v getent >/dev/null 2>&1; then
+        getent passwd "$1" | cut -d: -f6
+    else
+        grep "^$1:" /etc/passwd | cut -d: -f6
+    fi
+}
+
+match_block() {
+    cat <<EOF
+$marker
+Match User $user
+    AllowTcpForwarding local
+    PermitOpen localhost:$port
+    ForceCommand /usr/bin/false
+    X11Forwarding no
+    AllowAgentForwarding no
+    PermitTTY no
+    PasswordAuthentication no
+    KbdInteractiveAuthentication no
+EOF
+}
+
+sshd_bin() {
+    [ -n "${SSHD:-}" ] && { echo "$SSHD"; return; }
+    for s in /usr/sbin/sshd /usr/local/sbin/sshd; do
+        [ -x "$s" ] && { echo "$s"; return; }
+    done
+    command -v sshd 2>/dev/null
+}
+
+reload_sshd() {
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null && return 0
+    fi
+    if [ -x /etc/rc.d/sshd ]; then          # NetBSD
+        /etc/rc.d/sshd reload && return 0
+    fi
+    if command -v service >/dev/null 2>&1; then
+        service ssh reload 2>/dev/null || service sshd reload 2>/dev/null && return 0
+    fi
+    return 1
+}
+
+cmd_check() {
+    ok=0
+    if [ -n "$(sshd_bin)" ]; then
+        say "ok   an SSH server is installed ($(sshd_bin))"
+    else
+        say "MISSING  an SSH server (install openssh-server)"; ok=1
+    fi
+    if id "$user" >/dev/null 2>&1; then
+        say "ok   the '$user' account exists"
+    else
+        say "MISSING  the '$user' account (craft-host-setup apply)"; ok=1
+    fi
+    if [ -r "$sshd_config" ] && grep -q "^$marker" "$sshd_config"; then
+        say "ok   $sshd_config limits '$user' to the game's port"
+    else
+        say "MISSING  the sshd settings for '$user' (craft-host-setup apply)"; ok=1
+    fi
+    home=$(home_of "$user")
+    if [ -n "$home" ] && [ -s "$home/.ssh/authorized_keys" ]; then
+        n=$(grep -c . "$home/.ssh/authorized_keys")
+        say "ok   $n guest key(s) in $home/.ssh/authorized_keys"
+    else
+        say "MISSING  guest keys (craft-host-setup add-key their-key.pub)"; ok=1
+    fi
+    if [ $ok -eq 0 ]; then
+        say ""
+        say "Ready.  Guests join with:  craft --join $user@$(hostname)"
+    fi
+    return $ok
+}
+
+cmd_print() {
+    say "1. Create the account, with no password and no shell:"
+    say ""
+    say "   useradd -m -s $(nologin_shell) $user"
+    say ""
+    say "2. Add this to the end of $sshd_config, then reload sshd:"
+    say ""
+    match_block | sed 's/^/   /'
+    say ""
+    say "3. For each guest, add their public key to ~$user/.ssh/authorized_keys"
+    say "   (mode 600, owned by $user), starting the line with:"
+    say ""
+    say "   $key_opts ssh-ed25519 AAAA... guest@their-computer"
+}
+
+cmd_apply() {
+    need_root apply
+    [ -n "$(sshd_bin)" ] || die "no SSH server found: install openssh-server first"
+    if ! id "$user" >/dev/null 2>&1; then
+        useradd -m -s "$(nologin_shell)" "$user" || die "could not create the '$user' account"
+        say "created the '$user' account"
+    fi
+    if ! grep -q "^$marker" "$sshd_config"; then
+        cp "$sshd_config" "$sshd_config.craft-backup" || die "cannot back up $sshd_config"
+        { echo; match_block; } >> "$sshd_config"
+        if ! "$(sshd_bin)" -t; then
+            cp "$sshd_config.craft-backup" "$sshd_config"
+            die "sshd did not accept the new settings; $sshd_config is unchanged"
+        fi
+        say "added the '$user' settings to $sshd_config (backup: $sshd_config.craft-backup)"
+        reload_sshd && say "reloaded sshd" || say "reload sshd yourself to use them"
+    fi
+    home=$(home_of "$user")
+    mkdir -p "$home/.ssh"
+    touch "$home/.ssh/authorized_keys"
+    chown -R "$user" "$home/.ssh"
+    chmod 700 "$home/.ssh"
+    chmod 600 "$home/.ssh/authorized_keys"
+    say "done; now add each guest's key:  craft-host-setup add-key their-key.pub"
+}
+
+cmd_add_key() {
+    need_root add-key "$@"
+    [ $# -eq 1 ] || die "usage: craft-host-setup add-key FILE (or - for standard input)"
+    id "$user" >/dev/null 2>&1 || die "run 'craft-host-setup apply' first"
+    home=$(home_of "$user")
+    keys="$home/.ssh/authorized_keys"
+    if [ "$1" = "-" ]; then src=$(cat); else src=$(cat "$1") || exit 1; fi
+    added=0
+    echo "$src" | while IFS= read -r line; do
+        case "$line" in
+            ''|'#'*) continue ;;
+            ssh-*|ecdsa-*|sk-*) ;;
+            *) die "not a public key: $line" ;;
+        esac
+        if grep -qF "$line" "$keys" 2>/dev/null; then
+            say "already there: ${line%% *} ...${line##* }"
+        else
+            echo "$key_opts $line" >> "$keys"
+            say "added: ${line%% *} ...${line##* }"
+        fi
+    done
+    chown "$user" "$keys"
+    chmod 600 "$keys"
+}
+
+case "${1:-}" in
+    check)   cmd_check ;;
+    print)   cmd_print ;;
+    apply)   cmd_apply ;;
+    add-key) shift; cmd_add_key "$@" ;;
+    *)       sed -n '2,19s/^# \{0,1\}//p' "$0"; exit 2 ;;
+esac

@@ -53,6 +53,12 @@ static bool wtag(gzFile f, const char tag[5])
 
 static gzFile rec = NULL;
 static bool rec_failed = false;
+static char rec_path[1100] = "";
+
+const char *replay_recording_path()
+{
+   return rec_path;
+}
 
 static void rec_fail()
 {
@@ -85,6 +91,7 @@ bool replay_record_start(const char path[])
 {
    replay_record_close();
    rec_failed = false;
+   snprintf(rec_path, sizeof(rec_path), "%s", path);
    /* Level 1: orders are small, and the snapshot is written once. */
    rec = gzopen(path, "wb1");
    if (rec == NULL)
@@ -99,6 +106,9 @@ bool replay_record_start(const char path[])
       rec = NULL;
       return false;
    }
+   /* Push it to the file now and every few seconds, so a crash leaves a
+      recording that plays back up to the crash. */
+   gzflush(rec, Z_SYNC_FLUSH);
    atexit(replay_record_close);
    return true;
 }
@@ -115,6 +125,23 @@ void replay_record_orders(int step, int player, int n, const int id[], const int
       ok = w32(rec, id[i]) && w32(rec, cmd[i]) && w32(rec, x[i]) && w32(rec, y[i]);
    if (!ok)
       rec_fail();
+}
+
+void replay_record_crashed()
+{
+   extern int ticker;
+
+   if (rec != NULL)
+   {
+      if (!rec_failed)
+      {
+         wtag(rec, "crsh");
+         w32(rec, ticker);
+      }
+      gzflush(rec, Z_FINISH);
+      gzclose(rec);
+      rec = NULL;
+   }
 }
 
 void replay_record_close()
@@ -149,6 +176,7 @@ static struct
 } next;
 
 static int mismatches = 0;
+static int crash_step = -1; /* the recording ends where the game crashed */
 
 /* CRAFT_REPLAY_DUMP=DIR: write the state breakdown at every hash point,
    as DIR/rec-STEP.txt when recording and DIR/play-STEP.txt when playing
@@ -192,6 +220,8 @@ static void read_next()
    }
    else if (strcmp(next.tag, "hash") == 0 || strcmp(next.tag, "end ") == 0)
       ok = ok && r64(play, next.hash);
+   else if (strcmp(next.tag, "crsh") == 0)
+      ;
    else
       ok = false;
    if (!ok)
@@ -266,6 +296,26 @@ void replay_take(int step, int player, int &num, int cmd[], int id[], int x[], i
       return;
    for (;;)
    {
+      if (crash_step >= 0)
+      { /* play on past the crash, to see whether it happens again */
+         if (step == crash_step)
+         {
+            printf("replay: the game crashed during step %d when recorded\n", step);
+            fflush(stdout);
+         }
+         if (step > crash_step + 400)
+         {
+            printf("replay: no crash this time\n");
+            finish(step, false);
+         }
+         return;
+      }
+      if (next.valid && strcmp(next.tag, "crsh") == 0)
+      {
+         crash_step = next.step;
+         next.valid = false;
+         continue;
+      }
       if (next.eof)
          finish(step, false);
       if (!next.valid)
@@ -296,6 +346,8 @@ void replay_after_step(int step)
    {
       if (!(wtag(rec, "hash") && w32(rec, step) && w64(rec, hash_now("rec", step))))
          rec_fail();
+      else
+         gzflush(rec, Z_SYNC_FLUSH);
    }
    if (play != NULL && next.valid && strcmp(next.tag, "hash") == 0 && next.step == step)
    {

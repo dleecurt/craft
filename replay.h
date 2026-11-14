@@ -33,6 +33,12 @@ void replay_record_orders(int step, int player, int n, const int id[], const int
                           const int x[], const int y[]);
 void replay_record_close(); /* safe to call more than once */
 
+/* The file being recorded to ("" if none). */
+const char *replay_recording_path();
+
+/* The game crashed: save what was recorded (no final hash). */
+void replay_record_crashed();
+
 /* Playback.  replay_open reads the header and restores the snapshot's
    globals; call replay_open_objects after init_craft() to restore the
    units and players. */

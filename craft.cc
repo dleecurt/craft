@@ -1421,6 +1421,12 @@ int main(int argc, char **argv)
                      break;
                   }
                }
+               if (gives_up && net_role == net_guest)
+               { /* a guest who quits leaves at once, even if the game is
+                    stalled; the host gives up their side */
+                  stop_requested = 1;
+                  break;
+               }
                if (gives_up && o.n < max_orders)
                {
                   o.cmd[o.n] = cmd_give_up;
@@ -1925,6 +1931,33 @@ int main(int argc, char **argv)
              : net_role == net_guest && !active[net_seat] ? "out of the game"
                                                           : "game over");
    replay_record_close();
+   if (net_dropped_out_of_sync())
+   { // keep_the_recording
+      /* the next game would overwrite it; it shows how this computer
+         played the game, to compare with the host's */
+      char kept[1200];
+      FILE *in = fopen(replay_recording_path(), "rb");
+      FILE *out;
+
+      snprintf(kept, sizeof(kept), "%s", replay_recording_path());
+      if (strrchr(kept, '/') != NULL)
+         snprintf(strrchr(kept, '/') + 1, 40, "out-of-sync.craftreplay");
+      out = in != NULL ? fopen(kept, "wb") : NULL;
+      if (out != NULL)
+      {
+         char buf[65536];
+         size_t n;
+
+         while ((n = fread(buf, 1, sizeof(buf), in)) > 0)
+            fwrite(buf, 1, n, out);
+         fclose(out);
+         printf("craft: this game's recording is kept as %s; please report it with the\n"
+                "       host's recording (last.craftreplay on the host)\n",
+                kept);
+      }
+      if (in != NULL)
+         fclose(in);
+   }
    replay_playback_end(ticker);
    finish_craft();
    if (!stop_requested)

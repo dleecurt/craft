@@ -36,7 +36,11 @@ bool restoring = false;
 char restore_name[128] = "";
 
 #define save_magic "CRAFTSAV"
-#define save_version 1
+/* Bump whenever a saved class (player, object_handler, robot, ship,
+   field) gains, loses or reorders members: the size check alone misses
+   a change that fits into padding, and the file would load wrongly.
+   2: player::watching, object_handler::talk_text. */
+#define save_version 2
 #define save_suffix ".craftsave"
 #define num_sizes 12
 
@@ -55,7 +59,7 @@ static gzFile restore_file = NULL;
 /* Files and names                                                      */
 /*----------------------------------------------------------------------*/
 
-static void make_dirs(const char path[])
+void make_dirs(const char path[])
 {
    char p[1024];
 
@@ -341,6 +345,8 @@ static bool restore_player(gzFile f, player *live)
    KEEP(live, old, limit_zero);
    KEEP(live, old, is_dial);
    KEEP(live, old, rob);
+   KEEP(live, old, has_view);
+   KEEP(live, old, watching);
    KEEP(live, old, p_pressed);
    KEEP(live, old, p_button);
    KEEP(live, old, host);
@@ -355,6 +361,7 @@ static bool restore_player(gzFile f, player *live)
          live->num_marked_ships[k] = 0;
       }
       live->last_num_mans = -1;
+      live->pend_num = 0;
       live->last_money = -1;
       live->last_wood = -1;
       live->last_food = -1000;
@@ -453,6 +460,26 @@ static bool write_all(gzFile f, const char label[])
    return true;
 }
 
+static bool read_header(gzFile f, save_header &h);
+
+bool save_game_into(gzFile f)
+{
+   return write_all(f, "replay");
+}
+
+bool restore_game_globals_from(gzFile f)
+{
+   save_header h;
+   bool writing = false;
+
+   if (!read_header(f, h))
+   {
+      fprintf(stderr, "craft: this replay was made by a different version of Craft\n");
+      return false;
+   }
+   return globals_io(f, writing);
+}
+
 bool save_game(const char save_name[], char error[256])
 {
    char clean[128];
@@ -536,7 +563,16 @@ bool restore_game_globals(const char save_name[])
 
 bool restore_game_objects()
 {
-   gzFile f = restore_file;
+   bool ok = restore_file != NULL && restore_game_objects_from(restore_file);
+
+   if (restore_file != NULL)
+      gzclose(restore_file);
+   restore_file = NULL;
+   return ok;
+}
+
+bool restore_game_objects_from(gzFile f)
+{
    bool writing = false;
    bool ok = true;
 
@@ -579,8 +615,6 @@ bool restore_game_objects()
       if (ok)
          seed48(rng);
    }
-   gzclose(restore_file);
-   restore_file = NULL;
    if (ok)
       for (int i = 0; i < max_players; i++)
          if (active[i])

@@ -5,6 +5,20 @@ craft \- CRAFT: The Vicious Vikings, a real-time strategy game for X11
 .B craft
 .RB [ \-scale
 .IR N ]
+.RB [ \-\-record
+.IR FILE " |"
+.B \-\-replay
+.IR FILE
+.RB [ \-\-no\-view ]]
+.RB [ \-\-host ]
+.RB [ \-\-join
+.I HOST
+.B \-\-code
+.I CODE
+.RB [ \-\-name
+.IR NAME ]]
+.RB [ \-\-port
+.IR N ]
 .SH DESCRIPTION
 .B craft
 is a real-time strategy game in the style of Warcraft and Dune II.
@@ -52,6 +66,53 @@ Zoom the game
 .I N
 times (1 to 4, for example 1.5) for this run only, instead of the zoom
 set in the start menu.
+.TP
+.BI \-\-record " FILE"
+Record the game to
+.IR FILE .
+Without this option every game is recorded to
+.IR ~/.local/share/craft/replays/last.craftreplay ,
+which the next game replaces.
+.TP
+.BI \-\-replay " FILE"
+Play a recorded game back. The orders come from the recording, not from
+the mouse. Along the way the game checks that it plays out exactly as it
+did when recorded, and at the end it prints
+.B matched
+or
+.B DIVERGED
+with the number of steps and a hash of the final state, and exits with
+status 0 (matched) or 3 (diverged). Combine with
+.B CRAFT_PROFILE=fast
+to play the recording back as fast as possible.
+.TP
+.B \-\-no\-view
+With
+.BR \-\-replay :
+play the recording back without opening any window (no X display is
+needed), as fast as possible.
+.TP
+.B \-\-host
+Host a network game. Every person seat on the start menu after your own
+is played by a guest; after
+.B Play
+the game waits for them and prints a join code.
+.TP
+.BI \-\-join " HOST"
+Join the game hosted at
+.I HOST
+(or
+.IR HOST:PORT ).
+.TP
+.BI \-\-code " CODE"
+The join code the host was given.
+.TP
+.BI \-\-name " NAME"
+Your name in a network game (default: your login name).
+.TP
+.BI \-\-port " N"
+The port to host on or join (default 47800). The host listens on
+127.0.0.1 only; guests on other computers reach it through SSH.
 .SH ENVIRONMENT
 .TP
 .B DISPLAY
@@ -86,7 +147,27 @@ The value
 .B fast
 also runs the game as fast as it can, for testing.
 .TP
+.B CRAFT_REPLAY
+Set to
+.B off
+to stop recording games to
+.IR last.craftreplay .
+.TP
+.B CRAFT_REPLAY_DUMP
+A directory. At every check (each 200 steps) the game writes a readable
+breakdown of its state there, as
+.IR rec-STEP.txt
+while recording and
+.IR play-STEP.txt
+while playing back, so a diverging replay can be tracked down with
+.BR diff (1).
+.TP
+.B CRAFT_REPLAY_VERBOSE
+If set, print each check that matched during playback.
+.TP
 .B XDG_DATA_HOME
+Replays are kept in
+.IR $XDG_DATA_HOME/craft/replays .
 Saved games are kept in
 .IR $XDG_DATA_HOME/craft/saves ,
 by default

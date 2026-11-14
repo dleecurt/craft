@@ -35,3 +35,6 @@
 .winfix
 filesel.temp
 *.hist
+test-suite.log
+tests/*.log
+tests/*.trs

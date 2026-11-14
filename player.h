@@ -52,6 +52,13 @@ class player
    int    landscape_scale;
     
    bool   is_robot;
+   /* has windows on this computer.  False for computer players and for
+      people playing on another computer (network play, replays shown
+      without a screen); their side is still played in full here. */
+   bool   has_view;
+   /* the host's side is out of a network game, but the host keeps the
+      game running for the others and watches the whole map */
+   bool   watching;
    int    last_time; 
 
    bool   show_ship;
@@ -148,7 +155,8 @@ class player
                              char   host [], 
                              int    color, 
                              double g_speed,
-                             bool   robot = false);
+                             bool   robot = false,
+                             bool   view  = true);
 
    ~player                  ();
 
@@ -186,10 +194,23 @@ class player
 
    void get_cmds            (bool &is_quit,
                              int  &num,
-                             int  cmd    [max_marked],
-                             int  cmd_id [max_marked],
-                             int  cmd_x  [max_marked],
-                             int  cmd_y  [max_marked]);
+                             int  cmd    [max_orders],
+                             int  cmd_id [max_orders],
+                             int  cmd_x  [max_orders],
+                             int  cmd_y  [max_orders]);
+
+   /* orders made outside the command panel (dials, pointing at a talk
+      bubble), handed out with the next get_cmds */
+   void   queue_order (int id, int cmd, int x, int y);
+
+   /* work out what our units can see from scratch (a side that had no
+      screen where the game was set up kept no record of it) */
+   void   rebuild_sight ();
+   int    pend_num;
+   int    pend_cmd [16];
+   int    pend_id  [16];
+   int    pend_x   [16];
+   int    pend_y   [16];
    void tick                ();
 
    int  x_center            (int lx);

@@ -179,6 +179,77 @@ took, how many objects are alive, and the length of the X event queue
 (which should stay at a few events). `CRAFT_PROFILE=fast` also drops
 the pause between steps, to fast-forward a game for testing.
 
+### Network play (in progress)
+
+Up to four people play one game, each on their own computer. One
+computer hosts; the others join. Every computer runs the whole game in
+lockstep: each sends only its own player's orders, the host passes
+everyone's orders around, and every 40 steps the guests check that
+their game still matches the host's.
+
+For now hosting works from the command line; a start-menu lobby and
+SSH come next. On the host:
+
+    craft --host
+
+Set up the players on the start menu as usual: the first person seat
+is yours and every further person seat is a guest's (at most one
+computer player). After **Play** the host waits for the guests and
+prints a join code. On each guest:
+
+    craft --join HOST --code CODE --name YOURNAME
+
+The host only accepts connections from its own computer (127.0.0.1,
+port 47800). Until Craft starts SSH for you, a guest on another
+computer forwards the port with SSH first and then joins "localhost":
+
+    ssh -N -L 47800:localhost:47800 user@host &
+    craft --join localhost --code CODE --name YOURNAME
+
+During play only the host can pause or change the pace; guests are
+told. A guest who quits gives up and their side falls; if the host
+quits or loses the connection, the game ends for everyone. A guest
+whose game stops matching the host's is dropped ("out of sync") and
+their side falls. Both computers need the same build of Craft.
+
+### Messages
+
+When the game turns an order down it says why in the strip above the
+talk field at the bottom left: *Need gold*, *Need wood*, *Too many men*
+(the 70-man limit, which also stops new buildings), *Map is full* (every
+one of the game's 400 object slots is in use) or *No room for it* (a
+building has finished training a unit but there is no free square
+within reach; the unit comes out as soon as there is).
+
+### Replays
+
+Every game is recorded to `~/.local/share/craft/replays/last.craftreplay`
+(the next game replaces it; `CRAFT_REPLAY=off` turns recording off, and
+`craft --record FILE` records to a file of your choice). A recording
+holds the game as it was at the start plus every order given, so it is
+small, a few dozen kilobytes.
+
+`craft --replay FILE` plays a recording back. Every 200 steps it checks
+that the game is in exactly the state it was in when recorded, and at
+the end it prints whether the whole game *matched* and a hash of the
+final state. Add `CRAFT_PROFILE=fast` to run through it quickly:
+
+    CRAFT_PROFILE=fast craft --replay ~/.local/share/craft/replays/last.craftreplay
+
+`--no-view` plays a recording back without opening any window (no X
+display needed), as fast as the computer can; `make check` does this
+with the recordings in `tests/`.
+
+Network play (in the works) depends on this: every computer runs the
+whole game from the same orders, so the game must play out exactly the
+same way everywhere. If a replay ever diverges, run it again with
+`CRAFT_REPLAY_DUMP=/some/dir` set (both when recording and when
+playing back) and compare the `rec-*` and `play-*` files there with
+`diff` to see which unit went its own way.
+
+Ctrl-C (or `kill`) ends a game cleanly, so the recording is complete.
+Pressing it twice quits at once.
+
 ### Pausing
 
 To pause, press **pause** next to **quit** in the status panel (or the

@@ -52,6 +52,9 @@ libcraft_a_SOURCES = \
 	ppm_handler.cc ppm_handler.h \
 	robot.cc robot.h \
 	savegame.cc savegame.h \
+	replay.cc replay.h \
+	net.cc net.h \
+	statehash.cc statehash.h \
 	screens.cc screens.h \
 	scroller.cc scroller.h \
 	selector.cc selector.h \
@@ -144,3 +147,8 @@ dist-hook:
 	  cp -pR "$(srcdir)/$$d" "$(distdir)/" || exit 1; \
 	done
 	chmod -R u+w "$(distdir)"
+
+# Recorded games played back without a window; they must play out
+# exactly as recorded (see tests/replay-check.sh).
+TESTS = tests/replay-check.sh
+EXTRA_DIST += tests/replay-check.sh tests/four-players.craftreplay tests/give-up.craftreplay

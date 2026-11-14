@@ -20,7 +20,11 @@
 #include "dial.h"
 #include "scroller.h"
 #include "buttons.h"
+#include <signal.h>
+
 #include "ship.h"
+#include "replay.h"
+#include "net.h"
 #include "option_menu.h"
 #include "xtimer.h"
 #include "screens.h"
@@ -327,17 +331,17 @@ void init_craft(char host[max_players][128], char name[max_players][128],
          if (active[i])
          { // gen_player
             if (i == 0)
-               players[i]
-                   = new player(i, name[i], host[i], red, p_speed[i], (strcmp(host[i], "-") == 0));
+               players[i] = new player(i, name[i], host[i], red, p_speed[i],
+                                       strcmp(host[i], "-") == 0, strcmp(host[i], "@") != 0);
             if (i == 1)
-               players[i]
-                   = new player(i, name[i], host[i], blue, p_speed[i], (strcmp(host[i], "-") == 0));
+               players[i] = new player(i, name[i], host[i], blue, p_speed[i],
+                                       strcmp(host[i], "-") == 0, strcmp(host[i], "@") != 0);
             if (i == 2)
                players[i] = new player(i, name[i], host[i], yellow, p_speed[i],
-                                       (strcmp(host[i], "-") == 0));
+                                       strcmp(host[i], "-") == 0, strcmp(host[i], "@") != 0);
             if (i == 3)
-               players[i]
-                   = new player(i, name[i], host[i], cyan, p_speed[i], (strcmp(host[i], "-") == 0));
+               players[i] = new player(i, name[i], host[i], cyan, p_speed[i],
+                                       strcmp(host[i], "-") == 0, strcmp(host[i], "@") != 0);
          }
       for (i = 0; i < max_players; i++)
          if (active[i])
@@ -982,6 +986,10 @@ static double prof_max = 0;
 static int prof_steps = 0;
 static long prof_total = 0;
 
+/* Run steps back to back, with no pacing: CRAFT_PROFILE=fast, or a
+   replay played back without a view. */
+static bool unpaced = false;
+
 static int profiling()
 {
    if (prof_mode < 0)
@@ -1024,15 +1032,83 @@ static void prof_step(double t_cmds, double t_exec, double t_all)
 
 static void usage(FILE *f)
 {
-   fprintf(f, "usage: craft [-scale N]\n"
-              "  -scale N   zoom the game N times (1 to 4, e.g. 1.5) for this run only;\n"
-              "             without it, the zoom set on the start menu's Details page\n"
-              "             is used (by default chosen from the screen size)\n");
+   fprintf(f,
+           "usage: craft [-scale N] [--record FILE | --replay FILE [--no-view]]\n"
+           "             [--host | --join HOST --code CODE [--name NAME]] [--port N]\n"
+           "  -scale N        zoom the game N times (1 to 4, e.g. 1.5) for this run only;\n"
+           "                  without it, the zoom set on the start menu's Details page\n"
+           "                  is used (by default chosen from the screen size)\n"
+           "  --record FILE   record the game to FILE (by default every game is\n"
+           "                  recorded to ~/.local/share/craft/replays/last.craftreplay;\n"
+           "                  CRAFT_REPLAY=off turns that off)\n"
+           "  --replay FILE   play a recorded game back, check that it plays out\n"
+           "                  exactly as recorded, and print the result\n"
+           "  --no-view       with --replay: play it back without any window\n"
+           "                  (no X display needed)\n"
+           "  --host          host a network game: every person seat on the start\n"
+           "                  menu after your own is played by a guest\n"
+           "  --port N        port to host on or join (default %d)\n"
+           "  --join HOST     join the game hosted at HOST (or HOST:PORT)\n"
+           "  --code CODE     the join code the host was given\n"
+           "  --name NAME     your name in the game (default: your login)\n",
+           net_default_port);
+}
+
+/* A two-line note for this screen's player ("NAME\nhas been killed"). */
+static void net_note(const char msg[])
+{
+   char text[300];
+   const char *sp = strchr(msg, ' ');
+
+   if (!(active[net_seat] || players[net_seat]->watching) || !players[net_seat]->has_view)
+      return;
+   if (sp != NULL)
+      snprintf(text, sizeof(text), "%.*s\n%s", (int)(sp - msg), msg, sp + 1);
+   else
+      snprintf(text, sizeof(text), "%s", msg);
+   players[net_seat]->write(text);
+}
+
+/* An order may move only the player's own units.  Orders run a few
+   steps after they are given in a network game; by then the unit may be
+   dead and its slot reused, even by another player's new unit, so this
+   is checked when the order runs, the same way on every computer.
+   Pointing at a talk bubble removes anyone's bubble. */
+static bool order_is_theirs(int pi, int c, int u)
+{
+   if (u < 0 || u >= max_objects || objects->is_free[u])
+      return false;
+   if (c == cmd_dismiss_msg)
+      return objects->type[u] == object_msg;
+   return objects->color[u] == player_color[pi];
+}
+
+/* Ctrl-C or kill: finish the current step and end the game cleanly, so
+   the replay is complete.  A second signal ends the program at once. */
+static volatile sig_atomic_t stop_requested = 0;
+
+static void on_stop_signal(int sig)
+{
+   if (stop_requested)
+   {
+      signal(sig, SIG_DFL);
+      raise(sig);
+   }
+   stop_requested = 1;
 }
 
 int main(int argc, char **argv)
 {
    double act_speed;
+   const char *record_path = NULL;
+   const char *replay_path = NULL;
+   bool no_view = false;
+   bool hosting = false;
+   int port = net_default_port;
+   const char *join_addr = NULL;
+   const char *join_code = "";
+   const char *join_name = getenv("USER") != NULL ? getenv("USER") : "guest";
+   gzFile join_state = NULL;
 
    for (int i = 1; i < argc; i++)
    { // read_arguments
@@ -1052,6 +1128,22 @@ int main(int argc, char **argv)
             exit(2);
          }
       }
+      else if (strcmp(argv[i], "--record") == 0 && i + 1 < argc)
+         record_path = argv[++i];
+      else if (strcmp(argv[i], "--replay") == 0 && i + 1 < argc)
+         replay_path = argv[++i];
+      else if (strcmp(argv[i], "--no-view") == 0)
+         no_view = true;
+      else if (strcmp(argv[i], "--host") == 0)
+         hosting = true;
+      else if (strcmp(argv[i], "--port") == 0 && i + 1 < argc)
+         port = atoi(argv[++i]);
+      else if (strcmp(argv[i], "--join") == 0 && i + 1 < argc)
+         join_addr = argv[++i];
+      else if (strcmp(argv[i], "--code") == 0 && i + 1 < argc)
+         join_code = argv[++i];
+      else if (strcmp(argv[i], "--name") == 0 && i + 1 < argc)
+         join_name = argv[++i];
       else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)
       {
          usage(stdout);
@@ -1073,43 +1165,157 @@ int main(int argc, char **argv)
       music_menu();
    }
    { // init_players
-      int tic;
+      int tic = 0;
 
-      show_splash();
-      { // get_params
+      if (join_addr != NULL)
+      { // join_a_network_game
+         char addr[300];
+
+         if (strchr(join_addr, ':') == NULL && port != net_default_port)
+            snprintf(addr, sizeof(addr), "%s:%d", join_addr, port);
+         else
+            snprintf(addr, sizeof(addr), "%s", join_addr);
+         join_state = net_join(addr, join_code, join_name);
+         if (join_state == NULL || !restore_game_globals_from(join_state))
+         {
+            fprintf(stderr, "craft: could not join the game\n");
+            exit(1);
+         }
+         restoring = true;
+         /* Only our own side has a screen here. */
          for (int i = 0; i < max_players; i++)
-            active[i] = false;
-         option_menu(act_speed, tic);
+            if (active[i] && strcmp(host[i], "-") != 0)
+               strcpy(host[i], i == net_seat ? "" : "@");
       }
-      if (restoring)
+      else if (replay_path != NULL)
+      { // open_replay
+         if (!replay_open(replay_path))
+            exit(1);
+         restoring = true;
+         /* Show every human side on this display, or (--no-view) none:
+            "@" marks a person whose screen is elsewhere. */
+         for (int i = 0; i < max_players; i++)
+            if (active[i] && strcmp(host[i], "-") != 0)
+               strcpy(host[i], no_view ? "@" : "");
+         unpaced = no_view;
+      }
+      else
+      {
+         show_splash();
+         { // get_params
+            for (int i = 0; i < max_players; i++)
+               active[i] = false;
+            option_menu(act_speed, tic);
+         }
+      }
+      if (replay_path != NULL)
+         printf("playing back replay \"%s\"\n", replay_path);
+      else if (join_state != NULL)
+         printf("joined the game as player %d\n", net_seat + 1);
+      else if (restoring)
       { // load_options_and_land
          if (!restore_game_globals(restore_name))
          {
             fprintf(stderr, "craft: could not restore \"%s\"\n", restore_name);
             exit(1);
          }
+         /* A game saved during network play: everyone plays here now. */
+         for (int i = 0; i < max_players; i++)
+            if (strcmp(host[i], "@") == 0)
+               strcpy(host[i], "");
       }
       else
       {
          d_randomize(tic);
          init_speed(act_speed);
       }
+      if (hosting)
+      { // wait_for_guests
+         int seats[max_players];
+         int num_seats = 0;
+         int robots = 0;
+         bool mine = false;
+
+         for (int i = 0; i < max_players; i++)
+            if (active[i] && strcmp(host[i], "-") == 0)
+               robots++;
+            else if (active[i] && !mine)
+            {
+               mine = true;
+               net_seat = i;
+               strcpy(host[i], "");
+            }
+            else if (active[i])
+               seats[num_seats++] = i;
+         if (robots > 1)
+         {
+            fprintf(stderr, "craft: a network game can have at most one computer player\n");
+            exit(2);
+         }
+         if (!mine || num_seats == 0)
+         {
+            fprintf(stderr, "craft: to host, set up two or more people on the start menu "
+                            "(you, then one seat per guest)\n");
+            exit(2);
+         }
+         if (getenv("CRAFT_NET_DELAY") != NULL)
+            net_delay = i_bound(1, atoi(getenv("CRAFT_NET_DELAY")), 12);
+         if (!net_host_wait(port, seats, num_seats, name))
+            exit(1);
+         for (int k = 0; k < num_seats; k++)
+            strcpy(host[seats[k]], "@");
+      }
       init_craft(host, name, speed);
-      if (restoring)
+      if (replay_path != NULL || join_state != NULL)
+         ;
+      else if (restoring)
          printf("restoring game \"%s\"\n", restore_name);
       else
          printf("starting game with seed %d\n", tic);
    }
-   if (restoring)
+   if (join_state != NULL)
+   { // load_hosts_game
+      if (!restore_game_objects_from(join_state))
+      {
+         fprintf(stderr, "craft: the host's game arrived damaged\n");
+         exit(1);
+      }
+      gzclose(join_state);
+      players[net_seat]->rebuild_sight();
+   }
+   else if (replay_path != NULL)
+   { // load_replay_objects
+      if (!replay_open_objects())
+      {
+         fprintf(stderr, "craft: the replay \"%s\" is damaged\n", replay_path);
+         exit(1);
+      }
+   }
+   else if (restoring)
    { // load_objects_and_players
       if (!restore_game_objects())
       {
          fprintf(stderr, "craft: the saved game \"%s\" is damaged\n", restore_name);
          exit(1);
       }
+      /* sides that were played on another computer kept no fog record */
+      for (int i = 0; i < max_players; i++)
+         if (active[i])
+            players[i]->rebuild_sight();
    }
    else
       set_initial_objects();
+   if (replay_path == NULL)
+   { // start_recording
+      const char *e = getenv("CRAFT_REPLAY");
+
+      if (record_path != NULL)
+         replay_record_start(record_path);
+      else if (e == NULL || strcmp(e, "off") != 0)
+         replay_record_start(replay_default_path());
+   }
+   if (net_role == net_host && !net_host_start(ticker))
+      exit(1);
    music_game();
    { // exec_craft
       bool quit = false;
@@ -1119,30 +1325,192 @@ int main(int argc, char **argv)
       { // set_cnt
          cnt = num_players;
       }
-      while (!quit)
+      signal(SIGINT, on_stop_signal);
+      signal(SIGTERM, on_stop_signal);
+      net_orders net_step[max_players]; /* network game: this step's orders */
+      net_orders net_mine;              /* our orders not yet sent */
+      int net_submitted = -1;           /* last step whose orders went out */
+
+      net_mine.n = 0;
+      while (!quit && !stop_requested)
       { // cycle
          int suspend = -1;
          double prof_t0 = profiling() ? now_ms() : 0;
+
+         if (net_role == net_guest && !active[net_seat])
+         { /* our side is out of the game: leave the others to it */
+            net_leave("out of the game");
+            if (!stop_requested)
+            { // say_so
+               win *w;
+               button *b;
+               char text[] = "You are out of the game";
+
+               tell(host[net_seat], w, text);
+               b = new button(w, "OK", 120, 80);
+               while (!stop_requested)
+               {
+                  w->mark_mouse();
+                  w->tick();
+                  if (b->eval())
+                     break;
+                  w->scratch_mouse();
+                  delay(min_cycle_time);
+               }
+               delete b;
+               delete w;
+            }
+            quit = true;
+            break;
+         }
+         if (net_role != net_off)
+         { // network_lockstep
+            /* Orders given now run net_delay steps later, on every
+               computer at once; a step runs only when everyone's orders
+               for it are here. */
+            if ((active[net_seat] || players[net_seat]->watching) && players[net_seat]->has_view)
+            { // gather_my_orders
+               net_orders o;
+               bool gives_up = false;
+
+               players[net_seat]->get_cmds(gives_up, o.n, o.cmd, o.id, o.x, o.y);
+               if (!active[net_seat])
+               { /* watching: no orders; quitting ends the game for all */
+                  o.n = 0;
+                  if (gives_up)
+                  {
+                     stop_requested = 1;
+                     break;
+                  }
+               }
+               if (gives_up && o.n < max_orders)
+               {
+                  o.cmd[o.n] = cmd_give_up;
+                  o.id[o.n] = none;
+                  o.x[o.n] = 0;
+                  o.y[o.n] = 0;
+                  o.n++;
+               }
+               for (int k = 0; k < o.n && net_mine.n < max_orders; k++, net_mine.n++)
+               {
+                  net_mine.cmd[net_mine.n] = o.cmd[k];
+                  net_mine.id[net_mine.n] = o.id[k];
+                  net_mine.x[net_mine.n] = o.x[k];
+                  net_mine.y[net_mine.n] = o.y[k];
+               }
+            }
+            if (net_submitted != ticker)
+            {
+               net_submit(ticker + net_delay, net_mine);
+               net_mine.n = 0;
+               net_submitted = ticker;
+            }
+            { // show_network_news
+               const char *m = net_message();
+
+               if (m != NULL && (active[net_seat] || players[net_seat]->watching)
+                   && players[net_seat]->has_view)
+               {
+                  players[net_seat]->write(m);
+                  players[net_seat]->show_pace(); /* the host may have changed it */
+               }
+            }
+            if (net_host_gone())
+            { // the_game_is_over
+               char msg[300];
+
+               snprintf(msg, sizeof(msg), "%s",
+                        net_status() != NULL ? net_status() : "The host has left the game");
+               if (active[net_seat] && players[net_seat]->has_view && !stop_requested)
+               { // tell_and_wait
+                  win *w;
+                  button *b;
+
+                  tell(host[net_seat], players[net_seat]->w_land, w, msg);
+                  b = new button(w, "OK", 120, 80);
+                  while (!stop_requested)
+                  {
+                     w->mark_mouse();
+                     w->tick();
+                     if (b->eval())
+                        break;
+                     w->scratch_mouse();
+                     delay(min_cycle_time);
+                  }
+                  delete b;
+                  delete w;
+               }
+               quit = true;
+               break;
+            }
+            if (!net_take_step(ticker, net_step))
+            { // wait_for_the_others
+               const char *st = net_status();
+
+               if (st != NULL && (active[net_seat] || players[net_seat]->watching)
+                   && players[net_seat]->has_view)
+                  players[net_seat]->write(st);
+               net_poll(4);
+               continue;
+            }
+         }
 
          { // read_cmds
             for (int pi = 0; pi < max_players; pi++)
                if (active[pi] && !players[pi]->is_robot)
                { // read_player_cmd
-                  int cmd[max_marked];
-                  int x[max_marked];
-                  int y[max_marked];
-                  int id[max_marked];
-                  int num;
+                  int cmd[max_orders];
+                  int x[max_orders];
+                  int y[max_orders];
+                  int id[max_orders];
+                  int num = 0;
                   int suspend = -1;
                   bool is_suspend = false;
 
-                  players[pi]->get_cmds(is_suspend, num, cmd, id, x, y);
-                  { // perhaps_exec_player_cmd
-                     for (int p = 0; p < num; p++)
-                     { // exec_player_cmd
-                        objects->new_order(id[p], cmd[p], x[p], y[p]);
+                  { // collect_orders
+                     /* From this screen's panel, if the player sits here;
+                        otherwise (and in a replay) from elsewhere. */
+                     if (net_role != net_off)
+                     { /* agreed by every computer for this step */
+                        num = net_step[pi].n;
+                        for (int k = 0; k < num; k++)
+                        {
+                           cmd[k] = net_step[pi].cmd[k];
+                           id[k] = net_step[pi].id[k];
+                           x[k] = net_step[pi].x[k];
+                           y[k] = net_step[pi].y[k];
+                        }
                      }
-                     if (num > 0)
+                     else if (players[pi]->has_view)
+                        players[pi]->get_cmds(is_suspend, num, cmd, id, x, y);
+                     if (is_suspend && num < max_orders)
+                     {
+                        cmd[num] = cmd_give_up;
+                        id[num] = none;
+                        x[num] = 0;
+                        y[num] = 0;
+                        num++;
+                     }
+                     if (replay_playing) /* the recording decides, not the viewer */
+                        replay_take(ticker, pi, num, cmd, id, x, y);
+                     else
+                        replay_record_orders(ticker, pi, num, id, cmd, x, y);
+                  }
+                  { // perhaps_exec_player_cmd
+                     bool any = false;
+
+                     is_suspend = false;
+                     for (int p = 0; p < num; p++)
+                        if (cmd[p] == cmd_give_up)
+                           is_suspend = true;
+                        else if (!order_is_theirs(pi, cmd[p], id[p]))
+                           ; /* (see order_is_theirs) */
+                        else
+                        { // exec_player_cmd
+                           objects->new_order(id[p], cmd[p], x[p], y[p]);
+                           any = true;
+                        }
+                     if (any && players[pi]->has_view)
                         sfx_for(sfx_ack, player_color[pi]);
                   }
                   if (is_suspend)
@@ -1162,16 +1530,21 @@ int main(int argc, char **argv)
                               bool m_active[max_players];
 
                               if (players[i]->master_dead)
-                                 snprintf(msg, sizeof(msg), "%s haes been killed", name[i]);
+                                 snprintf(msg, sizeof(msg), "%s has been killed", name[i]);
                               else if (players[i]->num_mans <= 0)
-                                 snprintf(msg, sizeof(msg), "%s lost all his man", name[i]);
+                                 snprintf(msg, sizeof(msg), "%s lost all his men", name[i]);
                               else if (suspend == i)
                                  snprintf(msg, sizeof(msg), "%s gives up", name[i]);
                               { // tell_to_players
+                                 /* In a network game a dialog here would hold up every computer
+                                    until someone clicks OK: a note in the message strip instead. */
+                                 if (net_role != net_off)
+                                    net_note(msg);
                                  for (int j = 0; j < max_players; j++)
                                  {
                                     m_active[j] = false;
-                                    if (active[j] && !players[j]->is_robot)
+                                    if (active[j] && players[j]->has_view && !replay_playing
+                                        && net_role == net_off)
                                     { // tell_to_player
                                        tell(host[j], players[j]->w_land, w[j], msg);
                                        b[j] = new button(w[j], "OK", 120, 80);
@@ -1182,7 +1555,7 @@ int main(int argc, char **argv)
                               { // ack_from_players
                                  bool any_active = true;
 
-                                 while (any_active)
+                                 while (any_active && !stop_requested)
                                  { // check_buttons
                                     any_active = false;
                                     for (int j = 0; j < max_players; j++)
@@ -1217,7 +1590,7 @@ int main(int argc, char **argv)
                                     for (int j = 0; j < max_players; j++)
                                     {
                                        m_active[j] = false;
-                                       if (active[j] && !players[j]->is_robot)
+                                       if (active[j] && players[j]->has_view && !replay_playing)
                                        { // tell_to_player
                                           tell(host[j], players[j]->w_land, w[j], msg);
                                           b[j] = new button(w[j], "OK", 120, 80);
@@ -1228,7 +1601,7 @@ int main(int argc, char **argv)
                                  { // ack_from_players
                                     bool any_active = true;
 
-                                    while (any_active)
+                                    while (any_active && !stop_requested)
                                     { // check_buttons
                                        any_active = false;
                                        for (int j = 0; j < max_players; j++)
@@ -1257,7 +1630,7 @@ int main(int argc, char **argv)
                                     for (int j = 0; j < max_players; j++)
                                     {
                                        m_active[j] = false;
-                                       if (active[j] && !players[j]->is_robot)
+                                       if (active[j] && players[j]->has_view && !replay_playing)
                                        { // tell_to_player
                                           tell(host[j], players[j]->w_land, w[j], msg);
                                           b[j] = new button(w[j], "OK", 120, 80);
@@ -1268,7 +1641,7 @@ int main(int argc, char **argv)
                                  { // ack_from_players
                                     bool any_active = true;
 
-                                    while (any_active)
+                                    while (any_active && !stop_requested)
                                     { // check_buttons
                                        any_active = false;
                                        for (int j = 0; j < max_players; j++)
@@ -1300,21 +1673,26 @@ int main(int argc, char **argv)
          { // check_pause
             bool was = false;
 
+            if (num_paused > 0)
+               net_send_pause(true);
             while (num_paused > 0)
             {
                { // pause_a_bit
+                  net_poll(0);
                   was = true;
                   for (int i = 0; i < max_players; i++)
-                     if (active[i] && !players[i]->is_robot)
+                     if ((active[i] || players[i]->watching) && players[i]->has_view)
                         players[i]->handle_pause();
                   delay(min_cycle_time); /* don't spin a CPU core while paused */
                }
             }
             if (was)
+               net_send_pause(false);
+            if (was)
             { // pause_a_bit
                was = true;
                for (int i = 0; i < max_players; i++)
-                  if (active[i] && !players[i]->is_robot)
+                  if ((active[i] || players[i]->watching) && players[i]->has_view)
                      players[i]->handle_pause();
             }
          }
@@ -1324,6 +1702,8 @@ int main(int argc, char **argv)
             {
                objects->exec();
                ticker++;
+               replay_after_step(ticker);
+               net_after_step(ticker);
             }
          }
          double t_exec_done = profiling() ? now_ms() : 0;
@@ -1340,16 +1720,21 @@ int main(int argc, char **argv)
                   bool m_active[max_players];
 
                   if (players[i]->master_dead)
-                     snprintf(msg, sizeof(msg), "%s haes been killed", name[i]);
+                     snprintf(msg, sizeof(msg), "%s has been killed", name[i]);
                   else if (players[i]->num_mans <= 0)
-                     snprintf(msg, sizeof(msg), "%s lost all his man", name[i]);
+                     snprintf(msg, sizeof(msg), "%s lost all his men", name[i]);
                   else if (suspend == i)
                      snprintf(msg, sizeof(msg), "%s gives up", name[i]);
                   { // tell_to_players
+                     /* In a network game a dialog here would hold up every computer
+                        until someone clicks OK: a note in the message strip instead. */
+                     if (net_role != net_off)
+                        net_note(msg);
                      for (int j = 0; j < max_players; j++)
                      {
                         m_active[j] = false;
-                        if (active[j] && !players[j]->is_robot)
+                        if (active[j] && players[j]->has_view && !replay_playing
+                            && net_role == net_off)
                         { // tell_to_player
                            tell(host[j], players[j]->w_land, w[j], msg);
                            b[j] = new button(w[j], "OK", 120, 80);
@@ -1360,7 +1745,7 @@ int main(int argc, char **argv)
                   { // ack_from_players
                      bool any_active = true;
 
-                     while (any_active)
+                     while (any_active && !stop_requested)
                      { // check_buttons
                         any_active = false;
                         for (int j = 0; j < max_players; j++)
@@ -1395,7 +1780,7 @@ int main(int argc, char **argv)
                         for (int j = 0; j < max_players; j++)
                         {
                            m_active[j] = false;
-                           if (active[j] && !players[j]->is_robot)
+                           if (active[j] && players[j]->has_view && !replay_playing)
                            { // tell_to_player
                               tell(host[j], players[j]->w_land, w[j], msg);
                               b[j] = new button(w[j], "OK", 120, 80);
@@ -1406,7 +1791,7 @@ int main(int argc, char **argv)
                      { // ack_from_players
                         bool any_active = true;
 
-                        while (any_active)
+                        while (any_active && !stop_requested)
                         { // check_buttons
                            any_active = false;
                            for (int j = 0; j < max_players; j++)
@@ -1435,7 +1820,7 @@ int main(int argc, char **argv)
                         for (int j = 0; j < max_players; j++)
                         {
                            m_active[j] = false;
-                           if (active[j] && !players[j]->is_robot)
+                           if (active[j] && players[j]->has_view && !replay_playing)
                            { // tell_to_player
                               tell(host[j], players[j]->w_land, w[j], msg);
                               b[j] = new button(w[j], "OK", 120, 80);
@@ -1446,7 +1831,7 @@ int main(int argc, char **argv)
                      { // ack_from_players
                         bool any_active = true;
 
-                        while (any_active)
+                        while (any_active && !stop_requested)
                         { // check_buttons
                            any_active = false;
                            for (int j = 0; j < max_players; j++)
@@ -1486,7 +1871,7 @@ int main(int argc, char **argv)
             if (next_step == 0 || now - next_step > 4 * period)
                next_step = now;
             next_step += period;
-            if (next_step > now && profiling() != 2)
+            if (next_step > now && profiling() != 2 && !unpaced)
             {
                struct timespec ts;
                double wait = next_step - now;
@@ -1498,6 +1883,12 @@ int main(int argc, char **argv)
          }
       }
    }
+   net_leave(stop_requested                               ? "quit"
+             : net_role == net_guest && !active[net_seat] ? "out of the game"
+                                                          : "game over");
+   replay_record_close();
+   replay_playback_end(ticker);
    finish_craft();
-   show_credits();
+   if (!stop_requested)
+      show_credits();
 }

@@ -9,6 +9,7 @@
 
 #include "player.h"
 #include "sound.h"
+#include "net.h"
 #include "savegame.h"
 #include "masks.h"
 #include "object_handler.h"
@@ -40,7 +41,8 @@
 #define w_msg_dx 100
 #define w_msg_dy 30
 
-player::player(int pno, char l_name[], char l_host[], int l_color, double g_speed, bool p_robot)
+player::player(int pno, char l_name[], char l_host[], int l_color, double g_speed, bool p_robot,
+               bool p_view)
 
 {
    { // store_params
@@ -58,11 +60,14 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
       master_dead = false;
       num_man = 0;
       is_robot = p_robot;
+      has_view = !p_robot && p_view;
+      watching = false;
       last_money = -1;
       last_wood = -1;
       last_food = -100;
       last_num_mans = -1;
       num_mans = 0;
+      pend_num = 0;
       num_town_halls = 0;
       num_farms = 0;
       num_markets = 0;
@@ -110,7 +115,7 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
          food = 1000;
       }
    }
-   if (!is_robot)
+   if (has_view)
    {    // open_windows
       { // init_sun_cnt
          for (int x = 0; x < max_land_dx; x++)
@@ -232,7 +237,8 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
          }
       }
    }
-   else
+   rob = NULL;
+   if (is_robot)
    { // init_rob
       rob = new robot(l_color, pno);
       bonus = robo_power;
@@ -248,7 +254,7 @@ void player::show_pace()
 {
    char text[32];
 
-   if (is_robot)
+   if (!has_view)
       return;
    /* Beside Gold/Wood/Food/Men, whose text ends near x 121: the command
       list above can reach y 620, so nothing else of ours may go there. */
@@ -269,7 +275,7 @@ void player::initial_display()
    show();
    show_overview();
    show_overview_frame(true);
-   if (!is_robot)
+   if (has_view)
    {
       w_land->tick();
       w_overview->tick();
@@ -324,6 +330,25 @@ void player::deactivate()
                }
             }
       }
+   }
+   if (has_view && net_role == net_host && p_no == net_seat)
+   { // keep_watching
+      /* The host's game must run on for the others: keep the screen,
+         show the whole map, take no more orders. */
+      for (int k = 0; k < 5; k++)
+      {
+         num_marked[k] = 0;
+         num_marked_ships[k] = 0;
+      }
+      watching = true;
+      active = false;
+      show();
+      show_overview();
+      write("You are out:\nwatching");
+      return;
+   }
+   if (has_view)
+   {
       { // delete_pics
          for (int i = 0; i < max_pics; i++)
             if (pic_used[i])
@@ -435,7 +460,7 @@ void player::load_pics()
 
 void player::show()
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       for (int x = x0; x < i_min(landscape_dx, (x0 + (wdx / pic_dx))); x++)
          for (int y = y0; y < i_min(landscape_dy, (y0 + (wdy / pic_dy))); y++)
@@ -445,7 +470,7 @@ void player::show()
 
 void player::show_int(int lx, int ly, int i)
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       int wx = (lx - x0) * pic_dx;
       int wy = (ly - y0) * pic_dy;
@@ -468,9 +493,9 @@ void player::show(int lx, int ly, bool extra_mark)
 
 void player::show(int lx0, int ly0, int lx, int ly, bool extra_mark)
 {
-   if (!is_robot && (0 <= lx && lx < landscape_dx && 0 <= ly && ly < landscape_dy))
+   if (has_view && (0 <= lx && lx < landscape_dx && 0 <= ly && ly < landscape_dy))
    { // perform_show
-      if (!is_suny || sun_cnt[lx][ly] > 0)
+      if (!is_suny || watching || sun_cnt[lx][ly] > 0)
       { // show_field
          int wx = (lx - x0) * pic_dx;
          int wy = (ly - y0) * pic_dy;
@@ -637,7 +662,7 @@ players [0]->show_int (lx, ly, u_pic);
 
 void player::show_main_mark(int u, int wx, int wy)
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       if (objects->type[u] == object_ship1)
       {    // show_ship_mark
@@ -664,7 +689,7 @@ void player::show_main_mark(int u, int wx, int wy)
 
 void player::show_mark(int u, int wx, int wy)
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       if (objects->type[u] == object_ship1)
       { // show_ship_mark
@@ -681,7 +706,7 @@ void player::show_mark(int u, int wx, int wy)
 
 void player::show_overview()
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       for (int x = 0; x < landscape_dx; x++)
          for (int y = 0; y < landscape_dy; y++)
@@ -691,9 +716,9 @@ void player::show_overview()
 
 void player::show_overview(int lx, int ly)
 {
-   if (!is_robot && (0 <= lx && lx < landscape_dx && 0 <= ly && ly < landscape_dy))
+   if (has_view && (0 <= lx && lx < landscape_dx && 0 <= ly && ly < landscape_dy))
    { // perform_show
-      if ((!is_suny || sun_cnt[lx][ly] > 0)
+      if ((!is_suny || watching || sun_cnt[lx][ly] > 0)
           || (unit[lx][ly] != none && objects->type[unit[lx][ly]] == object_mine))
       { // show_field
          int xx = lx * olandscale;
@@ -747,7 +772,7 @@ void player::show_overview(int lx, int ly)
 
 void player::show_overview_frame(int lx, int ly)
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       int xx = lx * olandscale;
       int yy = ly * olandscale;
@@ -759,7 +784,7 @@ void player::show_overview_frame(int lx, int ly)
 
 void player::show_overview_frame(bool is_display)
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       if (is_display)
       { // perform_display
@@ -854,11 +879,84 @@ static void drop_stray_releases(win *w)
       w->mouse(xe, ye, b);
 }
 
-void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[max_marked],
-                      int cmd_x[max_marked], int cmd_y[max_marked])
+/* Things that let their owner see around them (not corpses, swimmers,
+   arrows and the like). */
+static bool sees(int type)
+{
+   switch (type)
+   {
+   case object_worker:
+   case object_knight:
+   case object_archer:
+   case object_pawn:
+   case object_cata:
+   case object_doktor:
+   case object_trader:
+   case object_scout:
+   case object_ship1:
+   case object_home:
+   case object_camp:
+   case object_farm:
+   case object_market:
+   case object_tents:
+   case object_mill:
+   case object_smith:
+   case object_docks:
+   case object_uni:
+   case object_building_site:
+      return true;
+   }
+   return false;
+}
+
+void player::rebuild_sight()
+{
+   if (!has_view)
+      return;
+   for (int x = 0; x < landscape_dx; x++)
+      for (int y = 0; y < landscape_dy; y++)
+         if (sun_cnt[x][y] != 0)
+            return; /* kept a record after all: trust it */
+   for (int id = 0; id < max_objects; id++)
+      if (!objects->is_free[id] && objects->color[id] == color && objects->on_ship[id] == -1
+          && objects->vr[id] > 0 && sees(objects->type[id]))
+      {
+         int r = objects->vr[id];
+
+         for (int x = i_max(0, objects->x[id] - r);
+              x <= i_min(landscape_dx - 1, objects->x[id] + r); x++)
+            for (int y = i_max(0, objects->y[id] - r);
+                 y <= i_min(landscape_dy - 1, objects->y[id] + r); y++)
+               sun_cnt[x][y]++;
+      }
+   show();
+   show_overview();
+}
+
+void player::queue_order(int id, int c, int x, int y)
+{
+   for (int i = 0; i < pend_num; i++)
+      if (pend_id[i] == id && pend_cmd[i] == c)
+      { /* newer values replace an order not yet handed out */
+         pend_x[i] = x;
+         pend_y[i] = y;
+         return;
+      }
+   if (pend_num < 16)
+   {
+      pend_id[pend_num] = id;
+      pend_cmd[pend_num] = c;
+      pend_x[pend_num] = x;
+      pend_y[pend_num] = y;
+      pend_num++;
+   }
+}
+
+void player::get_cmds(bool &is_quit, int &num, int cmd[max_orders], int cmd_id[max_orders],
+                      int cmd_x[max_orders], int cmd_y[max_orders])
 
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_get
       int d;
 
@@ -916,7 +1014,7 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
                   bool was_on_unit = on_unit;
 
                   if (u != none && objects->type[u] == object_msg)
-                     objects->t[u] = 0;
+                     queue_order(u, cmd_dismiss_msg, 0, 0); /* pointing at a bubble removes it */
                   on_unit = (u != none && objects->type[u] != object_msg
                              && (objects->type[u] != object_scout || objects->wood[u] == 0
                                  || objects->color[u] == color));
@@ -1736,17 +1834,20 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
                { // toggle_mute (Shift+M; plain m is Move)
                   sound_muted = sound_toggle_mute();
                   for (int p = 0; p < max_players; p++)
-                     if (::active[p] && !players[p]->is_robot)
+                     if (::active[p] && players[p]->has_view)
                         players[p]->show_pace();
                };
                break;
                case '+':
                case '=':
                case '-':
-               { // change_game_pace
-                  step_game_pace(cc[0] == '-' ? -1 : 1);
+               {                             // change_game_pace
+                  if (net_role == net_guest) /* the host sets the pace */
+                     write("Only the host\nsets the pace");
+                  else
+                     net_send_pace(step_game_pace(cc[0] == '-' ? -1 : 1));
                   for (int p = 0; p < max_players; p++)
-                     if (::active[p] && !players[p]->is_robot)
+                     if (::active[p] && players[p]->has_view)
                         players[p]->show_pace();
                };
                break;
@@ -2237,26 +2338,31 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
             if (is_dial)
             { // read_limits
                int m0 = marked[act][0];
+               /* The dials work on copies; a change goes out as an order. */
+               int wl = objects->wood_limit[m0];
+               int ml = objects->money_limit[m0];
 
-               w_limit->eval(objects->wood_limit[m0]);
-               m_limit->eval(objects->money_limit[m0]);
+               w_limit->eval(wl);
+               m_limit->eval(ml);
                if (limit_zero->eval())
                { // handle_limit_press
-                  if (objects->money_limit[m0] != 0 || objects->wood_limit[m0] != 0)
+                  if (ml != 0 || wl != 0)
                   {
-                     objects->money_limit[m0] = 0;
-                     objects->wood_limit[m0] = 0;
+                     ml = 0;
+                     wl = 0;
                      limit_zero->press();
                   }
                   else
                   {
-                     objects->money_limit[m0] = 10000;
-                     objects->wood_limit[m0] = 10000;
+                     ml = 10000;
+                     wl = 10000;
                      limit_zero->press(false);
                   }
-                  w_limit->set(objects->wood_limit[m0]);
-                  m_limit->set(objects->money_limit[m0]);
+                  w_limit->set(wl);
+                  m_limit->set(ml);
                }
+               if (ml != objects->money_limit[m0] || wl != objects->wood_limit[m0])
+                  queue_order(m0, cmd_set_limits, ml, wl);
             }
          }
       }
@@ -2352,7 +2458,6 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
             w_status->write(30, 728, a);
             last_num_mans = num_mans;
          }
-         food = d_bound(0.0, food, max_food);
          if (d_abs(food - last_food) > 1.0 || food <= 0.0)
          { // show_food
             char a[128];
@@ -2373,8 +2478,13 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
          drop_stray_releases(w_pause);
          if (p_button[p_no]->eval() || b_pause->eval())
          {
-            paused[p_no] = true;
-            num_paused++;
+            if (net_role == net_guest) /* in a network game only the host pauses */
+               write("Only the host\ncan pause");
+            else
+            {
+               paused[p_no] = true;
+               num_paused++;
+            }
          }
          w_pause->scratch_mouse();
       }
@@ -2519,6 +2629,42 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_marked], int cmd_id[m
             }
          }
       }
+      { // hand_out_queued_orders
+         for (int i = 0; i < pend_num && num < max_orders; i++, num++)
+         {
+            cmd[num] = pend_cmd[i];
+            cmd_id[num] = pend_id[i];
+            cmd_x[num] = pend_x[i];
+            cmd_y[num] = pend_y[i];
+         }
+         pend_num = 0;
+      }
+      { // send_talk_text
+         /* The text belongs with the talk order, so every computer (and a
+            replay) shows what was typed, not its own text field. */
+         int speaker = none;
+
+         for (int i = 0; i < num && speaker == none; i++)
+            if (cmd[i] == cmd_talk)
+               speaker = cmd_id[i];
+         if (speaker != none)
+         {
+            char text[talk_text_size];
+
+            memset(text, 0, sizeof(text));
+            snprintf(text, sizeof(text), "%s", message);
+            for (int c = 0; c < talk_text_size / 4 && num < max_orders; c++, num++)
+            {
+               unsigned char *b = (unsigned char *)text + c * 4;
+
+               cmd[num] = cmd_talk_text;
+               cmd_id[num] = speaker;
+               cmd_x[num] = c;
+               cmd_y[num] = (int)((unsigned)b[0] | (unsigned)b[1] << 8 | (unsigned)b[2] << 16
+                                  | (unsigned)b[3] << 24);
+            }
+         }
+      }
       { // finish
          w_land->scratch_mouse();
          w_overview->scratch_mouse();
@@ -2578,7 +2724,7 @@ void player::focus(int xx, int yy)
 
 void player::tick()
 {
-   if (!is_robot)
+   if (has_view)
       w_land->tick();
 }
 
@@ -2594,7 +2740,7 @@ int player::y_center(int ly)
 
 void player::show_percent(int x, int y, int dx, int dy, int p, const char title[])
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       int l1 = (int)((double)dx * double(p) / 100.0);
       int l2 = dx - l1;
@@ -2615,7 +2761,7 @@ void player::show_percent(int x, int y, int dx, int dy, int p, const char title[
 
 void player::clear_percent(int /* x */, int y, int /* dx */, int dy)
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       w_status->set_color(gray80);
       w_status->fill(10, y, 160, dy);
@@ -2624,7 +2770,7 @@ void player::clear_percent(int /* x */, int y, int /* dx */, int dy)
 
 void player::clear_status()
 {
-   if (!is_robot)
+   if (has_view)
    {    // perform_show
       { // clear_cmds
          for (int i = 0; i < num_cmds; i++)
@@ -2837,7 +2983,7 @@ void player::adjust_cmds()
 
 void player::show_status(int id, bool is_first_time)
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       if (id == none)
       { // handle_multi_status
@@ -3521,13 +3667,41 @@ void player::show_status(int id, bool is_first_time)
 
 void player::inform(char msg[])
 {
-   if (!is_robot)
+   if (has_view)
    { // perform_show
       ack(msg);
    }
 }
 
-void player::write(const char /* msg */[]) {}
+/* Game messages ("Need more gold", "Too many mans", ...) go in the
+   strip above the talk field, newest at the bottom.  They used to be
+   dropped, so a refused order gave no reason. */
+void player::write(const char msg[])
+{
+   if (!has_view || w_inform == NULL)
+      return;
+   if (strchr(msg, '\n') != NULL)
+   { /* a two-line note replaces both lines */
+      const char *nl = strchr(msg, '\n');
+
+      snprintf(msgs[1], sizeof(msgs[1]), "%.*s", (int)(nl - msg), msg);
+      snprintf(msgs[2], sizeof(msgs[2]), "%s", nl + 1);
+   }
+   else
+   {
+      if (strcmp(msg, msgs[2]) == 0)
+         return; /* the same message again: already shown */
+      strcpy(msgs[0], msgs[1]);
+      strcpy(msgs[1], msgs[2]);
+      snprintf(msgs[2], sizeof(msgs[2]), "%s", msg);
+   }
+   w_inform->set_color(gray80);
+   w_inform->fill(0, 0, w_inform_dx, w_msg_dy);
+   w_inform->set_color(red);
+   w_inform->write(2, 12, msgs[1]);
+   w_inform->write(2, 26, msgs[2]);
+   w_inform->tick();
+}
 
 /*
 void player::write (char msg [])
@@ -3982,7 +4156,7 @@ void player::edit()
 
 void player::add_sun(int lx, int ly, int r)
 {
-   if (is_suny && !is_robot && active)
+   if (is_suny && has_view && active)
    { // perform_sun
       for (int x = i_max(0, lx - r); x <= i_min(landscape_dx - 1, lx + r); x++)
          for (int y = i_max(0, ly - r); y <= i_min(landscape_dy - 1, ly + r); y++)
@@ -3999,7 +4173,7 @@ void player::add_sun(int lx, int ly, int r)
 
 void player::sub_sun(int lx, int ly, int r)
 {
-   if (is_suny && !is_robot && active)
+   if (is_suny && has_view && active)
    { // perform_sun
       for (int x = i_max(0, lx - r); x <= i_min(landscape_dx - 1, lx + r); x++)
          for (int y = i_max(0, ly - r); y <= i_min(landscape_dy - 1, ly + r); y++)
@@ -4028,7 +4202,7 @@ void player::move_sun(int lx, int ly, int dx, int dy, int r)
 
 void player::move_sun_d(int lx, int ly, int dx, int dy, int r)
 {
-   if (is_suny && !is_robot && active)
+   if (is_suny && has_view && active)
    { // perform_sun
       int ix = i_sign(dx);
       int iy = i_sign(dy);

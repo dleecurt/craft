@@ -7,7 +7,6 @@
  * Exact changes: git log -- land.cc land.hc
  */
 
-
 #include "land.h"
 #include "errorhandling.h"
 #include "craft_def.h"
@@ -799,23 +798,29 @@ void close_islands()
    }
 }
 
-void island_rnd(int i, int &x, int &y)
+/* A random free land square on island i.  False if there is none
+   (it used to try forever, hanging the start of some games). */
+bool island_rnd(int i, int &x, int &y)
 {
-   int k;
-
+   if (ss[i] <= 0)
+      return false;
+   for (int tries = 0; tries < 2000; tries++)
    { // rnd
-      k = i_random(0, ss[i] - 1);
+      int k = i_random(0, ss[i] - 1);
+
       x = xx_il[i][k];
       y = yy_il[i][k];
+      if (landhight[x][y] > 0 && unit[x][y] == none)
+         return true;
    }
-   while (!(landhight[x][y] > 0 && unit[x][y] == none))
-   {
-      { // rnd
-         k = i_random(0, ss[i] - 1);
-         x = xx_il[i][k];
-         y = yy_il[i][k];
-      }
+   for (int k = 0; k < ss[i]; k++)
+   { // first_free_square
+      x = xx_il[i][k];
+      y = yy_il[i][k];
+      if (landhight[x][y] > 0 && unit[x][y] == none)
+         return true;
    }
+   return false;
 }
 
 void prop_il_id()
@@ -888,7 +893,8 @@ void rnd_water_land()
                int dyy = i_random(6 - h, 12 - h);
 
                { // rnd_mxy
-                  island_rnd(i, x, y);
+                  if (!island_rnd(i, x, y))
+                     continue;
                }
                for (int xx = i_max(0, x - dxx); xx < i_min(landscape_dx - 1, x + dxx); xx++)
                   for (int yy = i_max(0, y - dyy); yy < i_min(landscape_dy - 1, y + dyy); yy++)
@@ -958,7 +964,8 @@ void rnd_water_land()
                int m;
 
                { // rnd_mxy
-                  island_rnd(i, x, y);
+                  if (!island_rnd(i, x, y))
+                     continue;
                }
                for (int xx = i_max(0, x - 1); xx < i_min(landscape_dx, x + 2); xx++)
                   for (int yy = i_max(0, y - 1); yy < i_min(landscape_dy, y + 2); yy++)

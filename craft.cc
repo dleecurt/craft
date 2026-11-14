@@ -214,10 +214,11 @@ void dump()
 static void on_crash(int sig)
 {
    static volatile sig_atomic_t again = 0;
-   const char *what = sig == SIGSEGV  ? "segmentation fault"
-                      : sig == SIGBUS ? "bus error"
-                      : sig == SIGFPE ? "arithmetic error"
-                                      : "abort";
+   const char *what = sig == SIGSEGV   ? "segmentation fault"
+                      : sig == SIGBUS  ? "bus error"
+                      : sig == SIGFPE  ? "arithmetic error"
+                      : sig == SIGALRM ? "froze: one step took over 10 seconds"
+                                       : "abort";
    char line[256];
    int n;
 
@@ -227,7 +228,7 @@ static void on_crash(int sig)
    again = 1;
    alarm(5); /* if cleaning up hangs, give up */
    n = snprintf(line, sizeof(line),
-                "\ncraft crashed (%s) at step %d. Please report it with the\n"
+                "\ncraft stopped (%s) at step %d. Please report it with the\n"
                 "recording %s\nand the lines below.\n",
                 what, ticker, replay_recording_path()[0] ? replay_recording_path() : "(none)");
    if (n > 0 && write(2, line, (size_t)n) < 0)
@@ -277,6 +278,7 @@ void install_abnormal_termination_handler()
    signal(SIGBUS, on_crash);
    signal(SIGFPE, on_crash);
    signal(SIGABRT, on_crash);
+   signal(SIGALRM, on_crash); /* the step watchdog */
    /*
    set_interrupt (SIGINT,  handle_abnormal_termination);
    set_interrupt (SIGBUS,  handle_bus_error);
@@ -1208,7 +1210,7 @@ int main(int argc, char **argv)
    }
 
    { // start_message
-      printf("CRAFT Version 3.5 (http://set.gmd.de/~hua) started\n");
+      printf("CRAFT %s (%s) started\n", VERSION, PACKAGE_URL);
    }
    { // init_sound
       sound_open();
@@ -1744,7 +1746,9 @@ int main(int argc, char **argv)
          { // exec_objects
             for (int i = 0; i < 1; i++)
             {
+               alarm(10); /* a step takes milliseconds; 10 s means a freeze */
                objects->exec();
+               alarm(0);
                ticker++;
                replay_after_step(ticker);
                net_after_step(ticker);

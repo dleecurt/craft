@@ -275,9 +275,11 @@ same way everywhere. If a replay ever diverges, run it again with
 playing back) and compare the `rec-*` and `play-*` files there with
 `diff` to see which unit went its own way.
 
-If Craft crashes it says so, prints where in the code it was, and keeps
-the recording up to the crash; `--replay` then plays the game to that
-point and on past it, to see whether the crash happens again. Please
+If Craft crashes, or freezes (one step of the game taking more than 10
+seconds), it says so, prints where in the code it was, and keeps the
+recording up to that point; `--replay` then plays the game to there and
+on past it, to see whether it happens again. A recording that simply
+stops (the game was killed) plays on past its end the same way. Please
 send both when you report a crash.
 
 Ctrl-C (or `kill`) ends a game cleanly, so the recording is complete.
@@ -346,7 +348,7 @@ called `hcc`. It has been expanded once into ordinary C++. Comments like
 
 ## History
 
-- **1990s**: written by Uwe Beyer at GMD (borneo.gmd.de). Version 3.5,
+- **1990s**: written by Uwe Beyer at GMD. Version 3.5,
   27 October 1997, distributed as `craftcc35.tar.Z`.
 - **1999 to 2009**: packaged in Debian (until Etch) and in SuSE.
 - **Quipyowert2/craft**: imported the 3.5 source to GitHub and fixed many

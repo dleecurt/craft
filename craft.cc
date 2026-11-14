@@ -1112,6 +1112,13 @@ static void net_note(const char msg[])
    players[net_seat]->write(text);
 }
 
+/* Does player i have a screen on this computer that is in use (playing,
+   or a host watching)?  Seats nobody sits in have no player at all. */
+static bool shows_here(int i)
+{
+   return players[i] != NULL && (active[i] || players[i]->watching) && players[i]->has_view;
+}
+
 /* An order may move only the player's own units.  Orders run a few
    steps after they are given in a network game; by then the unit may be
    dead and its slot reused, even by another player's new unit, so this
@@ -1726,7 +1733,7 @@ int main(int argc, char **argv)
                   net_poll(0);
                   was = true;
                   for (int i = 0; i < max_players; i++)
-                     if ((active[i] || players[i]->watching) && players[i]->has_view)
+                     if (shows_here(i))
                         players[i]->handle_pause();
                   delay(min_cycle_time); /* don't spin a CPU core while paused */
                }
@@ -1737,7 +1744,7 @@ int main(int argc, char **argv)
             { // pause_a_bit
                was = true;
                for (int i = 0; i < max_players; i++)
-                  if ((active[i] || players[i]->watching) && players[i]->has_view)
+                  if (shows_here(i))
                      players[i]->handle_pause();
             }
          }

@@ -862,16 +862,47 @@ static void drop_stray_releases(win *w)
       w->mouse(xe, ye, b);
 }
 
+/* Things that let their owner see around them (not corpses, swimmers,
+   arrows and the like). */
+static bool sees(int type)
+{
+   switch (type)
+   {
+   case object_worker:
+   case object_knight:
+   case object_archer:
+   case object_pawn:
+   case object_cata:
+   case object_doktor:
+   case object_trader:
+   case object_scout:
+   case object_ship1:
+   case object_home:
+   case object_camp:
+   case object_farm:
+   case object_market:
+   case object_tents:
+   case object_mill:
+   case object_smith:
+   case object_docks:
+   case object_uni:
+   case object_building_site:
+      return true;
+   }
+   return false;
+}
+
 void player::rebuild_sight()
 {
    if (!has_view)
       return;
-   for (int x = 0; x < max_land_dx; x++)
-      for (int y = 0; y < max_land_dy; y++)
-         sun_cnt[x][y] = 0;
+   for (int x = 0; x < landscape_dx; x++)
+      for (int y = 0; y < landscape_dy; y++)
+         if (sun_cnt[x][y] != 0)
+            return; /* kept a record after all: trust it */
    for (int id = 0; id < max_objects; id++)
       if (!objects->is_free[id] && objects->color[id] == color && objects->on_ship[id] == -1
-          && objects->vr[id] > 0)
+          && objects->vr[id] > 0 && sees(objects->type[id]))
       {
          int r = objects->vr[id];
 
@@ -1794,7 +1825,9 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_orders], int cmd_id[m
                case '=':
                case '-':
                {                             // change_game_pace
-                  if (net_role != net_guest) /* the host sets the pace */
+                  if (net_role == net_guest) /* the host sets the pace */
+                     write("Only the host\nsets the pace");
+                  else
                      net_send_pace(step_game_pace(cc[0] == '-' ? -1 : 1));
                   for (int p = 0; p < max_players; p++)
                      if (::active[p] && players[p]->has_view)
@@ -2426,10 +2459,15 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_orders], int cmd_id[m
          w_pause->mark_mouse();
          w_pause->tick();
          drop_stray_releases(w_pause);
-         if ((p_button[p_no]->eval() || b_pause->eval()) && net_role != net_guest)
-         { /* in a network game only the host pauses */
-            paused[p_no] = true;
-            num_paused++;
+         if (p_button[p_no]->eval() || b_pause->eval())
+         {
+            if (net_role == net_guest) /* in a network game only the host pauses */
+               write("Only the host\ncan pause");
+            else
+            {
+               paused[p_no] = true;
+               num_paused++;
+            }
          }
          w_pause->scratch_mouse();
       }

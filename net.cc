@@ -1059,8 +1059,14 @@ static void guest_handle()
          break;
       }
       case msg_pace:
-         game_pace = (int)r.u32();
+      {
+         char text[64];
+
+         game_pace = i_bound(1, (int)r.u32(), 1000);
+         snprintf(text, sizeof(text), "Pace set to\n%d/s", game_pace);
+         say(text);
          break;
+      }
       case msg_bye:
       {
          char why[256];

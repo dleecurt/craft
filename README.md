@@ -247,6 +247,11 @@ same way everywhere. If a replay ever diverges, run it again with
 playing back) and compare the `rec-*` and `play-*` files there with
 `diff` to see which unit went its own way.
 
+If Craft crashes it says so, prints where in the code it was, and keeps
+the recording up to the crash; `--replay` then plays the game to that
+point and on past it, to see whether the crash happens again. Please
+send both when you report a crash.
+
 Ctrl-C (or `kill`) ends a game cleanly, so the recording is complete.
 Pressing it twice quits at once.
 

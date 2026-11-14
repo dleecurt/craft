@@ -21,6 +21,10 @@
 #include "scroller.h"
 #include "buttons.h"
 #include <signal.h>
+#include <unistd.h>
+#if defined(__GLIBC__)
+#include <execinfo.h>
+#endif
 
 #include "ship.h"
 #include "replay.h"
@@ -203,6 +207,41 @@ void dump()
    }
 }
 
+/* A crash: say where, keep the recording (it plays back up to the
+   crash), then die the usual way so the shell still reports it. */
+static void on_crash(int sig)
+{
+   static volatile sig_atomic_t again = 0;
+   const char *what = sig == SIGSEGV  ? "segmentation fault"
+                      : sig == SIGBUS ? "bus error"
+                      : sig == SIGFPE ? "arithmetic error"
+                                      : "abort";
+   char line[256];
+   int n;
+
+   signal(sig, SIG_DFL);
+   if (again)
+      raise(sig);
+   again = 1;
+   alarm(5); /* if cleaning up hangs, give up */
+   n = snprintf(line, sizeof(line),
+                "\ncraft crashed (%s) at step %d. Please report it with the\n"
+                "recording %s\nand the lines below.\n",
+                what, ticker, replay_recording_path()[0] ? replay_recording_path() : "(none)");
+   if (n > 0 && write(2, line, (size_t)n) < 0)
+      n = 0;
+#if defined(__GLIBC__)
+   {
+      void *frames[64];
+      int num = backtrace(frames, 64);
+
+      backtrace_symbols_fd(frames, num, 2);
+   }
+#endif
+   replay_record_crashed();
+   raise(sig);
+}
+
 void handle_abnormal_termination()
 {
    printf("\nabnormal termination occurred ***\n");
@@ -232,6 +271,10 @@ void handle_seg_fault()
 
 void install_abnormal_termination_handler()
 {
+   signal(SIGSEGV, on_crash);
+   signal(SIGBUS, on_crash);
+   signal(SIGFPE, on_crash);
+   signal(SIGABRT, on_crash);
    /*
    set_interrupt (SIGINT,  handle_abnormal_termination);
    set_interrupt (SIGBUS,  handle_bus_error);
@@ -1226,6 +1269,8 @@ int main(int argc, char **argv)
       }
       else
       {
+         if (getenv("CRAFT_SEED") != NULL) /* replay a map exactly (testing) */
+            tic = atoi(getenv("CRAFT_SEED"));
          d_randomize(tic);
          init_speed(act_speed);
       }

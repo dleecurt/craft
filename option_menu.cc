@@ -18,13 +18,14 @@
 #include "zoom.h"
 #include "sound.h"
 #include "getline.h"
+#include "lobby.h"
 #include "win.h"
 #include "cmap.h"
 #include "craft.h"
 #include "xstring.h"
 
 #define w_dx 400
-#define w_dy 300
+#define w_dy 360 /* room under the pages for the network line */
 #define flag_dx 100
 #define flag_dy 30
 #define flag_x 300
@@ -49,6 +50,20 @@ int r_power;
 int r_agress;
 bool was_seed;
 button *b_restore = NULL; /* "restore" under the menu column */
+button *b_host = NULL;    /* "host" and "join": network play */
+button *b_join = NULL;
+bool menu_hosting = false; /* "host" is on: Play opens the lobby */
+bool menu_join = false;    /* "join" was pressed */
+
+static void show_network_line()
+{
+   w->set_color(gray80);
+   w->fill(0, 300, flag_x, w_dy - 300);
+   w->set_color(menu_hosting ? red : gray50);
+   w->write(12, 322,
+            menu_hosting ? "Hosting: play opens the lobby." : "host: others join your game");
+   w->write(12, 342, menu_hosting ? "(host again: play alone)" : "join: play in someone's game");
+}
 
 void show_flags()
 {
@@ -82,6 +97,12 @@ void show_flags()
    }
    if (b_restore != NULL)
       b_restore->press(false); /* redraw it over the cleared column */
+   if (b_host != NULL)
+   {
+      b_host->press(menu_hosting);
+      b_join->press(false);
+      show_network_line();
+   }
    w->tick();
 }
 
@@ -146,6 +167,22 @@ bool any_flag_request()
                act_menu = i;
          return true;
       }
+   }
+
+   if (b_host != NULL && b_host->eval())
+   { // toggle_hosting
+      menu_hosting = !menu_hosting && host_notice();
+      b_host->press(menu_hosting);
+      show_network_line();
+      w->tick();
+   }
+   if (b_join != NULL && b_join->eval())
+   { // leave_the_menu_to_join
+      menu_join = true;
+      for (int i = 0; i < num_menus; i++)
+         if (menu_type[i] == m_quit)
+            act_menu = i;
+      return true;
    }
 
    if (w->is_mouse(x, y, b) && (x >= flag_x && y <= num_menus * flag_dy))
@@ -602,6 +639,9 @@ void inactive_menu(int /* act_menu */, int &tic)
    }
 }
 
+/* Shown before?  Then keep what was set (back from the lobby). */
+static bool menu_was_shown = false;
+
 void option_menu(double &speed, int &tic)
 {
    bool quit;
@@ -611,7 +651,8 @@ void option_menu(double &speed, int &tic)
          w = new win("craft_options", "", 10, 10, w_dx, w_dy);
       }
       { // init_p
-         for (int i = 0; i < 4; i++)
+         /* pictures belong to a window: none kept from a previous menu */
+         for (int i = 0; i < 40; i++)
             is_p[i] = false;
       }
       { // init_menus
@@ -627,13 +668,17 @@ void option_menu(double &speed, int &tic)
          menu_type[7] = m_quit;
          num_menus = 8;
          b_restore = new button(w, "restore", flag_x + 18, num_menus * flag_dy + 22);
+         b_host = new button(w, "host", flag_x + 8, num_menus * flag_dy + 64);
+         b_join = new button(w, "join", flag_x + 54, num_menus * flag_dy + 64);
+         menu_join = false;
          show_flags();
+      }
+      if (!menu_was_shown)
+      { // default_params
          active[0] = true;
          active[1] = true;
          active[2] = false;
          active[3] = false;
-      }
-      { // default_params
          is_self = true;
          is_suny = true;
          is_water_world = true;
@@ -655,6 +700,7 @@ void option_menu(double &speed, int &tic)
          strcpy(name[3], "player 3");
          was_seed = false;
          set_robot(1);
+         menu_was_shown = true;
       }
    }
    while (!quit)
@@ -691,6 +737,16 @@ void option_menu(double &speed, int &tic)
       }
    }
    { // finish
+      delete (b_restore);
+      delete (b_host);
+      delete (b_join);
+      b_restore = b_host = b_join = NULL;
+      for (int i = 0; i < 40; i++)
+         if (is_p[i])
+         {
+            delete (p[i]);
+            is_p[i] = false;
+         }
       delete (w);
       switch (act_speed)
       {

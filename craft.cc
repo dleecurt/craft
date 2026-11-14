@@ -29,6 +29,8 @@
 #include "ship.h"
 #include "replay.h"
 #include "net.h"
+#include "lobby.h"
+#include "option_menu.h"
 #include "option_menu.h"
 #include "xtimer.h"
 #include "screens.h"
@@ -1077,7 +1079,7 @@ static void usage(FILE *f)
 {
    fprintf(f,
            "usage: craft [-scale N] [--record FILE | --replay FILE [--no-view]]\n"
-           "             [--host | --join HOST --code CODE [--name NAME]] [--port N]\n"
+           "             [--host | --join craft@HOST --code CODE [--name NAME]] [--port N]\n"
            "  -scale N        zoom the game N times (1 to 4, e.g. 1.5) for this run only;\n"
            "                  without it, the zoom set on the start menu's Details page\n"
            "                  is used (by default chosen from the screen size)\n"
@@ -1088,10 +1090,9 @@ static void usage(FILE *f)
            "                  exactly as recorded, and print the result\n"
            "  --no-view       with --replay: play it back without any window\n"
            "                  (no X display needed)\n"
-           "  --host          host a network game: every person seat on the start\n"
-           "                  menu after your own is played by a guest\n"
+           "  --host          start with \"host\" pressed: Play opens the lobby\n"
            "  --port N        port to host on or join (default %d)\n"
-           "  --join HOST     join the game hosted at HOST (or HOST:PORT)\n"
+           "  --join craft@HOST  join the game hosted at HOST, through SSH\n"
            "  --code CODE     the join code the host was given\n"
            "  --name NAME     your name in the game (default: your login)\n",
            net_default_port);
@@ -1217,27 +1218,7 @@ int main(int argc, char **argv)
    { // init_players
       int tic = 0;
 
-      if (join_addr != NULL)
-      { // join_a_network_game
-         char addr[300];
-
-         if (strchr(join_addr, ':') == NULL && port != net_default_port)
-            snprintf(addr, sizeof(addr), "%s:%d", join_addr, port);
-         else
-            snprintf(addr, sizeof(addr), "%s", join_addr);
-         join_state = net_join(addr, join_code, join_name);
-         if (join_state == NULL || !restore_game_globals_from(join_state))
-         {
-            fprintf(stderr, "craft: could not join the game\n");
-            exit(1);
-         }
-         restoring = true;
-         /* Only our own side has a screen here. */
-         for (int i = 0; i < max_players; i++)
-            if (active[i] && strcmp(host[i], "-") != 0)
-               strcpy(host[i], i == net_seat ? "" : "@");
-      }
-      else if (replay_path != NULL)
+      if (replay_path != NULL)
       { // open_replay
          if (!replay_open(replay_path))
             exit(1);
@@ -1250,73 +1231,78 @@ int main(int argc, char **argv)
          unpaced = no_view;
       }
       else
-      {
-         show_splash();
-         { // get_params
-            for (int i = 0; i < max_players; i++)
-               active[i] = false;
-            option_menu(act_speed, tic);
+      { // menus_lobbies
+         bool from_command_line = join_addr != NULL;
+         bool first = true;
+
+         if (!from_command_line)
+            show_splash();
+         menu_hosting = hosting; /* --host: as if "host" was pressed */
+         if (getenv("CRAFT_NET_DELAY") != NULL)
+            net_delay = i_bound(1, atoi(getenv("CRAFT_NET_DELAY")), 12);
+         for (;;)
+         {
+            if (!from_command_line)
+            { // get_params
+               if (first)
+                  for (int i = 0; i < max_players; i++)
+                     active[i] = false;
+               first = false;
+               restoring = false;
+               menu_join = false;
+               option_menu(act_speed, tic);
+            }
+            if (from_command_line || menu_join)
+            { // join_a_network_game
+               join_state = join_window(port, from_command_line ? join_addr : "", join_code,
+                                        join_name, from_command_line && join_code[0] != 0);
+               if (join_state == NULL)
+               {
+                  if (from_command_line)
+                     show_splash();
+                  from_command_line = false;
+                  continue; /* back to the start menu */
+               }
+               if (!restore_game_globals_from(join_state))
+               {
+                  fprintf(stderr, "craft: the host's game arrived damaged\n");
+                  exit(1);
+               }
+               restoring = true;
+               /* Only our own side has a screen here. */
+               for (int i = 0; i < max_players; i++)
+                  if (active[i] && strcmp(host[i], "-") != 0)
+                     strcpy(host[i], i == net_seat ? "" : "@");
+               break;
+            }
+            if (restoring)
+            { // load_options_and_land
+               if (!restore_game_globals(restore_name))
+               {
+                  fprintf(stderr, "craft: could not restore \"%s\"\n", restore_name);
+                  exit(1);
+               }
+               /* A game saved during network play: everyone plays here now. */
+               for (int i = 0; i < max_players; i++)
+                  if (strcmp(host[i], "@") == 0)
+                     strcpy(host[i], "");
+            }
+            else
+            {
+               if (getenv("CRAFT_SEED") != NULL) /* replay a map exactly (testing) */
+                  tic = atoi(getenv("CRAFT_SEED"));
+               d_randomize(tic);
+               init_speed(act_speed);
+            }
+            if (menu_hosting && !host_lobby(port, restoring))
+               continue; /* the host cancelled: back to the start menu */
+            break;
          }
       }
       if (replay_path != NULL)
          printf("playing back replay \"%s\"\n", replay_path);
       else if (join_state != NULL)
          printf("joined the game as player %d\n", net_seat + 1);
-      else if (restoring)
-      { // load_options_and_land
-         if (!restore_game_globals(restore_name))
-         {
-            fprintf(stderr, "craft: could not restore \"%s\"\n", restore_name);
-            exit(1);
-         }
-         /* A game saved during network play: everyone plays here now. */
-         for (int i = 0; i < max_players; i++)
-            if (strcmp(host[i], "@") == 0)
-               strcpy(host[i], "");
-      }
-      else
-      {
-         if (getenv("CRAFT_SEED") != NULL) /* replay a map exactly (testing) */
-            tic = atoi(getenv("CRAFT_SEED"));
-         d_randomize(tic);
-         init_speed(act_speed);
-      }
-      if (hosting)
-      { // wait_for_guests
-         int seats[max_players];
-         int num_seats = 0;
-         int robots = 0;
-         bool mine = false;
-
-         for (int i = 0; i < max_players; i++)
-            if (active[i] && strcmp(host[i], "-") == 0)
-               robots++;
-            else if (active[i] && !mine)
-            {
-               mine = true;
-               net_seat = i;
-               strcpy(host[i], "");
-            }
-            else if (active[i])
-               seats[num_seats++] = i;
-         if (robots > 1)
-         {
-            fprintf(stderr, "craft: a network game can have at most one computer player\n");
-            exit(2);
-         }
-         if (!mine || num_seats == 0)
-         {
-            fprintf(stderr, "craft: to host, set up two or more people on the start menu "
-                            "(you, then one seat per guest)\n");
-            exit(2);
-         }
-         if (getenv("CRAFT_NET_DELAY") != NULL)
-            net_delay = i_bound(1, atoi(getenv("CRAFT_NET_DELAY")), 12);
-         if (!net_host_wait(port, seats, num_seats, name))
-            exit(1);
-         for (int k = 0; k < num_seats; k++)
-            strcpy(host[seats[k]], "@");
-      }
       init_craft(host, name, speed);
       if (replay_path != NULL || join_state != NULL)
          ;

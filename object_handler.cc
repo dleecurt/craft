@@ -7429,6 +7429,11 @@ bool object_handler::can_built(int /* id */, int x0, int y0, int /* x */, int /*
                                bool is_robot)
 
 {
+   /* The checks below compare every square with the corner (x0, y0); the
+      computer player sometimes asks about a corner off the map, which
+      read outside the map arrays.  Such a place never fits. */
+   if (x0 < 0 || y0 < 0 || x0 >= landscape_dx || y0 >= landscape_dy)
+      return false;
    switch (cmd)
    {
    case cmd_construct:

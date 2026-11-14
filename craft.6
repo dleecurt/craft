@@ -93,16 +93,26 @@ play the recording back without opening any window (no X display is
 needed), as fast as possible.
 .TP
 .B \-\-host
-Host a network game. Every person seat on the start menu after your own
-is played by a guest; after
+Start with
+.B host
+pressed on the start menu:
 .B Play
-the game waits for them and prints a join code.
+opens the lobby, where guests join and the host sets each seat to Open,
+Computer or Closed.
 .TP
-.BI \-\-join " HOST"
+.BI \-\-join " craft@HOST"
 Join the game hosted at
+.IR HOST ,
+through SSH as the restricted
+.B craft
+account there (see
+.BR craft-host-setup ).
+A
 .I HOST
-(or
-.IR HOST:PORT ).
+without
+.B user@
+connects directly, which works only on the host itself or through an
+SSH tunnel.
 .TP
 .BI \-\-code " CODE"
 The join code the host was given.
@@ -113,6 +123,17 @@ Your name in a network game (default: your login name).
 .BI \-\-port " N"
 The port to host on or join (default 47800). The host listens on
 127.0.0.1 only; guests on other computers reach it through SSH.
+.SH NETWORK PLAY
+The host runs
+.B craft-host-setup apply
+once (as root) to create the
+.B craft
+account and its sshd settings, and
+.B craft-host-setup add-key
+.I guest.pub
+for each guest's public key. The game listens on 127.0.0.1 port 47800
+only; guests reach it through
+.BR "ssh -W" .
 .SH ENVIRONMENT
 .TP
 .B DISPLAY
@@ -164,6 +185,11 @@ while playing back, so a diverging replay can be tracked down with
 .TP
 .B CRAFT_REPLAY_VERBOSE
 If set, print each check that matched during playback.
+.TP
+.B CRAFT_SSH
+The program run in place of
+.B ssh
+to reach a host.
 .TP
 .B CRAFT_SEED
 Use this number to make the map of a new game instead of the one the

@@ -15,8 +15,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -42,7 +44,8 @@ enum
    msg_check,     /* guest: step, hash */
    msg_bye,       /* either: reason */
    msg_pause,     /* host: on */
-   msg_pace       /* host: pace */
+   msg_pace,      /* host: pace */
+   msg_lobby      /* host: seat lines, options summary */
 };
 
 #define ring_size 128 /* steps kept; far more than the delay */
@@ -472,12 +475,16 @@ static void reject(conn &c, const char why[])
    close_conn(c);
 }
 
-bool net_host_wait(int port, const int want[], int num_want, char names[][128])
+/*---- the lobby: guests who have introduced themselves, in the order
+       they came, until the host starts the game ----------------------*/
+
+static conn waiting[8];
+static int num_waiting = 0; /* introduced guests come first in waiting[] */
+
+bool net_host_listen(int port)
 {
    struct sockaddr_in a;
    int one = 1;
-   conn waiting[8];
-   int filled = 0;
 
    listen_fd = socket(AF_INET, SOCK_STREAM, 0);
    if (listen_fd < 0)
@@ -493,124 +500,171 @@ bool net_host_wait(int port, const int want[], int num_want, char names[][128])
    if (bind(listen_fd, (struct sockaddr *)&a, sizeof(a)) != 0 || listen(listen_fd, 8) != 0)
    {
       fprintf(stderr, "craft: cannot listen on port %d (%s)\n", port, strerror(errno));
+      close(listen_fd);
+      listen_fd = -1;
       return false;
    }
    set_nonblocking(listen_fd);
    make_join_code();
-   net_role = net_host;
+   num_waiting = 0;
+   for (int i = 0; i < 8; i++)
+      waiting[i] = conn();
    for (int p = 0; p < max_players; p++)
       seat_left[p] = false;
-   printf("hosting: waiting for %d guest%s\n", num_want, num_want == 1 ? "" : "s");
-   printf("  guests join with:  craft --join <this computer> --code %s\n", join_code);
-   fflush(stdout);
+   return true;
+}
 
-   while (filled < num_want)
-   {
-      struct pollfd pf[9];
-      int n = 0;
+const char *net_join_code()
+{
+   return join_code;
+}
 
-      pf[n].fd = listen_fd;
-      pf[n].events = POLLIN;
-      n++;
-      for (int i = 0; i < 8; i++)
-         if (waiting[i].fd >= 0)
+/* Drop waiting[i], keeping the introduced ones first and in order. */
+static void lobby_remove(int i)
+{
+   bool was_hello = waiting[i].hello;
+
+   close_conn(waiting[i]);
+   free(waiting[i].in.d);
+   free(waiting[i].out.d);
+   for (int k = i; k < 7; k++)
+      waiting[k] = waiting[k + 1];
+   waiting[7] = conn();
+   if (was_hello)
+      num_waiting--;
+}
+
+int net_lobby_poll(int max_guests, char names[][128])
+{
+   { // accept_new
+      int fd = accept(listen_fd, NULL, NULL);
+
+      if (fd >= 0)
+      {
+         int i = 0;
+
+         while (i < 8 && waiting[i].fd >= 0)
+            i++;
+         if (i == 8)
+            close(fd);
+         else
          {
-            pf[n].fd = waiting[i].fd;
-            pf[n].events = POLLIN | (waiting[i].out.len > 0 ? POLLOUT : 0);
-            n++;
-         }
-      if (poll(pf, (nfds_t)n, 500) < 0 && errno != EINTR)
-         return false;
-      { // accept_new
-         int fd = accept(listen_fd, NULL, NULL);
-
-         if (fd >= 0)
-         {
-            int i = 0;
-
-            while (i < 8 && waiting[i].fd >= 0)
-               i++;
-            if (i == 8)
-               close(fd);
-            else
-            {
-               set_nonblocking(fd);
-               waiting[i] = conn();
-               waiting[i].fd = fd;
-            }
+            set_nonblocking(fd);
+            waiting[i] = conn();
+            waiting[i].fd = fd;
          }
       }
-      for (int i = 0; i < 8; i++)
-         if (waiting[i].fd >= 0)
-         { // read_hello
-            conn &c = waiting[i];
-            int type;
-            reader r(NULL, 0);
-            size_t used;
-
-            if (!flush_conn(c) || !fill_conn(c))
-            {
-               if (c.hello)
-               {
-                  printf("  %s left\n", c.name);
-                  filled--;
-                  c.hello = false;
-               }
-               close_conn(c);
-               continue;
-            }
-            while (c.fd >= 0 && next_msg(c, type, r, used))
-            {
-               if (type == msg_hello && !c.hello)
-               {
-                  char build[256];
-                  char code[64];
-                  uint32_t proto = r.u32();
-
-                  r.str(build, sizeof(build));
-                  r.str(code, sizeof(code));
-                  r.str(c.name, sizeof(c.name));
-                  c.in.drop(used);
-                  if (!r.ok || proto != net_protocol || strcmp(build, build_id()) != 0)
-                     reject(c, "different version of Craft: both computers need the same build");
-                  else if (strcmp(code, join_code) != 0)
-                     reject(c, "wrong join code");
-                  else if (c.name[0] == 0)
-                     reject(c, "no player name");
-                  else
-                  {
-                     c.hello = true;
-                     filled++;
-                     printf("  %s joined (%d of %d)\n", c.name, filled, num_want);
-                     fflush(stdout);
-                  }
-               }
-               else
-               {
-                  c.in.drop(used);
-                  reject(c, "unexpected message");
-               }
-            }
-         }
    }
-   { // assign_seats
-      int k = 0;
+   for (int i = 0; i < 8; i++)
+   {
+      conn &c = waiting[i];
+      int type;
+      reader r(NULL, 0);
+      size_t used;
 
-      for (int i = 0; i < 8; i++)
-         if (waiting[i].fd >= 0 && waiting[i].hello && k < num_want)
+      if (c.fd < 0)
+         continue;
+      if (!flush_conn(c) || !fill_conn(c))
+      {
+         lobby_remove(i--);
+         continue;
+      }
+      while (c.fd >= 0 && next_msg(c, type, r, used))
+      {
+         if (type == msg_hello && !c.hello)
          {
-            int seat = want[k++];
+            char build[256];
+            char code[64];
+            uint32_t proto = r.u32();
 
-            guests[seat] = waiting[i];
-            guests[seat].seat = seat;
-            snprintf(names[seat], 128, "%s", waiting[i].name);
-            waiting[i].fd = -1; /* moved */
-            waiting[i].in.d = waiting[i].out.d = NULL;
+            r.str(build, sizeof(build));
+            r.str(code, sizeof(code));
+            r.str(c.name, sizeof(c.name));
+            c.in.drop(used);
+            if (!r.ok || proto != net_protocol || strcmp(build, build_id()) != 0)
+               reject(c, "Different version of Craft: both computers need the same build");
+            else if (strcasecmp(code, join_code) != 0) /* typed in either case */
+               reject(c, "Wrong join code");
+            else if (c.name[0] == 0)
+               reject(c, "No player name");
+            else if (num_waiting >= max_guests)
+               reject(c, "The game is full");
+            else
+            { /* move it up to the end of the introduced ones */
+               conn tmp = c;
+
+               c.hello = true;
+               tmp.hello = true;
+               for (int k = i; k > num_waiting; k--)
+                  waiting[k] = waiting[k - 1];
+               waiting[num_waiting++] = tmp;
+               break; /* waiting[i] is another connection now */
+            }
          }
-         else if (waiting[i].fd >= 0)
-            reject(waiting[i], "the game is full");
+         else if (type == msg_bye && c.hello)
+         {
+            c.in.drop(used);
+            lobby_remove(i);
+            i = -1; /* the list moved: start over */
+            break;
+         }
+         else
+         {
+            c.in.drop(used);
+            reject(c, "Unexpected message");
+         }
+      }
+      if (i >= 0 && c.fd < 0 && !c.hello)
+         lobby_remove(i--);
    }
-   return true;
+   for (int i = 0; i < num_waiting; i++)
+      snprintf(names[i], 128, "%s", waiting[i].name);
+   return num_waiting;
+}
+
+void net_lobby_send(const char lines[][128], int num_lines, const char summary[])
+{
+   for (int i = 0; i < num_waiting; i++)
+   {
+      msg m(msg_lobby);
+
+      m.u32((uint32_t)num_lines);
+      for (int k = 0; k < num_lines; k++)
+         m.str(lines[k]);
+      m.str(summary);
+      send_msg(waiting[i], m);
+      flush_conn(waiting[i]);
+   }
+}
+
+void net_lobby_close(const char why[])
+{
+   while (num_waiting > 0 || waiting[0].fd >= 0)
+   {
+      if (waiting[0].fd >= 0 && why != NULL)
+         reject(waiting[0], why);
+      lobby_remove(0);
+   }
+   if (listen_fd >= 0)
+      close(listen_fd);
+   listen_fd = -1;
+}
+
+void net_lobby_seat(const int seat_of[], int num)
+{
+   net_role = net_host;
+   for (int k = 0; k < num && k < num_waiting; k++)
+   {
+      int seat = seat_of[k];
+
+      guests[seat] = waiting[k];
+      guests[seat].seat = seat;
+      waiting[k] = conn(); /* moved */
+   }
+   for (int k = num; k < 8; k++)
+      if (waiting[k].fd >= 0)
+         reject(waiting[k], "The game has started without you");
+   num_waiting = 0;
 }
 
 static bool snapshot(buf &out)
@@ -872,10 +926,10 @@ static void host_handle(conn &g)
 /* Guest                                                                */
 /*----------------------------------------------------------------------*/
 
-static bool connect_to(const char addr[], int &fd)
+static bool connect_to(const char addr[], int port, int &fd)
 {
    char host[256];
-   const char *port = NULL;
+   const char *port_s = NULL;
    char port_text[16];
    struct addrinfo hints;
    struct addrinfo *res = NULL;
@@ -887,20 +941,20 @@ static bool connect_to(const char addr[], int &fd)
       if (colon != NULL && strchr(host, ':') == colon)
       {
          *colon = 0;
-         port = colon + 1;
+         port_s = colon + 1;
       }
    }
-   if (port == NULL)
+   if (port_s == NULL)
    {
-      snprintf(port_text, sizeof(port_text), "%d", net_default_port);
-      port = port_text;
+      snprintf(port_text, sizeof(port_text), "%d", port);
+      port_s = port_text;
    }
    memset(&hints, 0, sizeof(hints));
    hints.ai_family = AF_UNSPEC;
    hints.ai_socktype = SOCK_STREAM;
-   if (getaddrinfo(host, port, &hints, &res) != 0 || res == NULL)
+   if (getaddrinfo(host, port_s, &hints, &res) != 0 || res == NULL)
    {
-      fprintf(stderr, "craft: cannot find host \"%s\"\n", host);
+      snprintf(status_text, sizeof(status_text), "Cannot find the computer \"%.100s\"", host);
       return false;
    }
    fd = -1;
@@ -916,19 +970,85 @@ static bool connect_to(const char addr[], int &fd)
    freeaddrinfo(res);
    if (fd < 0)
    {
-      fprintf(stderr, "craft: cannot reach a Craft host at %s:%s\n", host, port);
+      snprintf(status_text, sizeof(status_text), "No Craft game is being hosted at %.100s:%s", host,
+               port_s);
       return false;
    }
    set_nonblocking(fd);
    return true;
 }
 
-gzFile net_join(const char addr[], const char code[], const char my_name[])
+/* "user@host": reach the host's game through SSH, which forwards our
+   stdin/stdout to the game's port on the host (ssh -W).  SSH asks for a
+   key passphrase on the terminal if it needs one. */
+static pid_t ssh_pid = -1;
+
+static bool ssh_to(const char addr[], int port, int &fd)
+{
+   int sv[2];
+   char target[64];
+   const char *ssh = getenv("CRAFT_SSH") != NULL ? getenv("CRAFT_SSH") : "ssh";
+
+   if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) != 0)
+   {
+      snprintf(status_text, sizeof(status_text), "Cannot start ssh (%s)", strerror(errno));
+      return false;
+   }
+   snprintf(target, sizeof(target), "localhost:%d", port);
+   fflush(stdout);
+   ssh_pid = fork();
+   if (ssh_pid < 0)
+   {
+      close(sv[0]);
+      close(sv[1]);
+      snprintf(status_text, sizeof(status_text), "Cannot start ssh (%s)", strerror(errno));
+      return false;
+   }
+   if (ssh_pid == 0)
+   { /* the child: ssh with the socket as its stdin and stdout */
+      dup2(sv[1], 0);
+      dup2(sv[1], 1);
+      close(sv[0]);
+      close(sv[1]);
+      execlp(ssh, ssh, "-T", "-o", "ExitOnForwardFailure=yes", "-o", "ConnectTimeout=15", "-W",
+             target, addr, (char *)NULL);
+      fprintf(stderr, "craft: cannot run %s: %s\n", ssh, strerror(errno));
+      _exit(127);
+   }
+   close(sv[1]);
+   fd = sv[0];
+   fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
+   return true;
+}
+
+static void stop_ssh()
+{
+   if (ssh_pid > 0)
+   {
+      int st;
+
+      kill(ssh_pid, SIGTERM);
+      waitpid(ssh_pid, &st, 0);
+   }
+   ssh_pid = -1;
+}
+
+static char lobby_lines[8][128];
+static int num_lobby_lines = 0;
+static char lobby_summary[256] = "";
+
+bool net_guest_connect(const char addr[], int port, const char code[], const char my_name[])
 {
    int fd;
+   bool ok;
 
-   if (!connect_to(addr, fd))
-      return NULL;
+   host_gone = false;
+   status_text[0] = 0;
+   num_lobby_lines = 0;
+   lobby_summary[0] = 0;
+   ok = strchr(addr, '@') != NULL ? ssh_to(addr, port, fd) : connect_to(addr, port, fd);
+   if (!ok)
+      return false;
    to_host = conn();
    to_host.fd = fd;
    {
@@ -940,43 +1060,77 @@ gzFile net_join(const char addr[], const char code[], const char my_name[])
       m.str(my_name);
       send_msg(to_host, m);
    }
-   printf("connected; waiting for the host to start the game\n");
-   fflush(stdout);
-   for (;;)
-   {
-      struct pollfd pf = { to_host.fd, (short)(POLLIN | (to_host.out.len ? POLLOUT : 0)), 0 };
-      int type;
-      reader r(NULL, 0);
-      size_t used;
+   return true;
+}
 
-      if (poll(&pf, 1, 500) < 0 && errno != EINTR)
-         return NULL;
-      if (!flush_conn(to_host) || !fill_conn(to_host))
-      {
-         fprintf(stderr, "craft: the host closed the connection\n");
-         return NULL;
-      }
-      if (!next_msg(to_host, type, r, used))
-         continue;
+int net_guest_lobby_poll(int ms, gzFile &state, char lines[][128], int &num_lines,
+                         char summary[256], char why[256])
+{
+   struct pollfd pf = { to_host.fd, (short)(POLLIN | (to_host.out.len ? POLLOUT : 0)), 0 };
+   int type;
+   reader r(NULL, 0);
+   size_t used;
+   int result = net_lobby_waiting;
+
+   state = NULL;
+   why[0] = 0;
+   if (to_host.fd < 0)
+   {
+      snprintf(why, 256, "%s", status_text[0] ? status_text : "Not connected");
+      return net_lobby_ended;
+   }
+   poll(&pf, 1, ms);
+   if (!flush_conn(to_host) || !fill_conn(to_host))
+   {
+      /* whatever came before it closed may say why */
+      if (next_msg(to_host, type, r, used) && type == msg_bye)
+         r.str(why, 256);
+      else if (ssh_pid > 0)
+         snprintf(why, 256, "The connection closed (see the terminal for what ssh said)");
+      else
+         snprintf(why, 256, "The host closed the connection");
+      close_conn(to_host);
+      stop_ssh();
+      return net_lobby_ended;
+   }
+   while (next_msg(to_host, type, r, used))
+   {
       if (type == msg_bye)
       {
-         char why[256];
+         r.str(why, 256);
+         to_host.in.drop(used);
+         close_conn(to_host);
+         stop_ssh();
+         return net_lobby_ended;
+      }
+      if (type == msg_lobby)
+      {
+         int n = (int)r.u32();
 
-         r.str(why, sizeof(why));
-         fprintf(stderr, "craft: the host turned us away: %s\n", why);
-         return NULL;
+         num_lobby_lines = 0;
+         for (int k = 0; k < n && r.ok; k++)
+         {
+            char tmp[128];
+
+            r.str(tmp, sizeof(tmp));
+            if (num_lobby_lines < 8)
+               snprintf(lobby_lines[num_lobby_lines++], 128, "%s", tmp);
+         }
+         r.str(lobby_summary, sizeof(lobby_summary));
+         to_host.in.drop(used);
+         result = net_lobby_changed;
+         continue;
       }
       if (type != msg_start)
       {
-         fprintf(stderr, "craft: the host sent something unexpected\n");
-         return NULL;
+         to_host.in.drop(used);
+         continue;
       }
-      {
+      { // start
          int first_step;
          uint32_t len;
          char path[] = "/tmp/craft-netXXXXXX";
          int tfd;
-         gzFile f;
 
          net_seat = (int)r.u32();
          host_seat = (int)r.u32();
@@ -987,28 +1141,79 @@ gzFile net_join(const char addr[], const char code[], const char my_name[])
          if (!r.ok || !r.need(len) || net_seat >= max_players || net_delay < 1
              || net_delay > ring_size / 4)
          {
-            fprintf(stderr, "craft: the host's game data is damaged\n");
-            return NULL;
+            snprintf(why, 256, "The host's game arrived damaged");
+            close_conn(to_host);
+            stop_ssh();
+            return net_lobby_ended;
          }
          tfd = mkstemp(path);
-         if (tfd < 0)
-            return NULL;
-         unlink(path);
-         if (write(tfd, r.p, len) != (ssize_t)len)
+         if (tfd < 0 || write(tfd, r.p, len) != (ssize_t)len)
          {
-            close(tfd);
-            return NULL;
+            snprintf(why, 256, "Cannot store the host's game (%s)", strerror(errno));
+            if (tfd >= 0)
+               close(tfd);
+            close_conn(to_host);
+            stop_ssh();
+            return net_lobby_ended;
          }
+         unlink(path);
          to_host.in.drop(used);
          lseek(tfd, 0, SEEK_SET);
-         f = gzdopen(tfd, "rb");
+         state = gzdopen(tfd, "rb");
          net_role = net_guest;
          for (int p = 0; p < max_players; p++)
             seat_left[p] = false;
          mark_initial_steps(first_step);
-         return f;
+         return net_lobby_started;
       }
    }
+   for (int k = 0; k < num_lobby_lines; k++)
+      snprintf(lines[k], 128, "%s", lobby_lines[k]);
+   num_lines = num_lobby_lines;
+   snprintf(summary, 256, "%s", lobby_summary);
+   return result;
+}
+
+void net_guest_cancel()
+{
+   if (to_host.fd >= 0)
+   {
+      msg m(msg_bye);
+
+      m.str("left the lobby");
+      send_msg(to_host, m);
+      flush_conn(to_host);
+      close_conn(to_host);
+   }
+   stop_ssh();
+}
+
+gzFile net_join(const char addr[], int port, const char code[], const char my_name[])
+{
+   gzFile state;
+   char lines[8][128];
+   int n;
+   char summary[256];
+   char why[256];
+
+   if (!net_guest_connect(addr, port, code, my_name))
+   {
+      fprintf(stderr, "craft: %s\n", status_text);
+      return NULL;
+   }
+   printf("connected; waiting for the host to start the game\n");
+   fflush(stdout);
+   for (;;)
+      switch (net_guest_lobby_poll(500, state, lines, n, summary, why))
+      {
+      case net_lobby_started:
+         return state;
+      case net_lobby_ended:
+         fprintf(stderr, "craft: %s\n", why);
+         return NULL;
+      default:
+         break;
+      }
 }
 
 static void guest_handle()
@@ -1288,6 +1493,7 @@ void net_leave(const char reason[])
          usleep(10000);
       close_conn(to_host);
    }
+   stop_ssh();
    if (net_role == net_host)
    {
       msg m(msg_bye);

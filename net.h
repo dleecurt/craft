@@ -135,4 +135,7 @@ void net_leave(const char reason[]);
 /* True when a guest has lost the host (the game is over). */
 bool net_host_gone();
 
+/* True when the host dropped us because our game went out of sync. */
+bool net_dropped_out_of_sync();
+
 #endif

@@ -221,10 +221,24 @@ works on the host itself or through a tunnel you made
 (`ssh -N -L 47800:localhost:47800 user@host`).
 
 **During play** only the host can pause or change the pace; guests are
-told. A guest who quits gives up and their side falls; if the host
-quits or loses the connection, the game ends for everyone. If the
-host's own side falls, the host watches the rest of the game. A guest
-whose game stops matching the host's is dropped ("out of sync").
+told. Orders take effect 4 steps (a tenth of a second) after they are
+given, on every computer at once; if the host often has to wait for a
+guest's orders, the network is slower than that and the delay grows,
+up to 12 steps.
+
+If a guest's game stops answering, everyone waits, with "Waiting for
+NAME" and a countdown; after 15 seconds that guest is dropped and their
+side falls. A guest who quits leaves at once, even while the game is
+waiting, and their side falls. If the host quits, or the host's
+computer cannot be reached for about 15 seconds, the game ends for
+everyone. If the host's own side falls, the host watches the rest of
+the game.
+
+Every 40 steps the guests check that their game still matches the
+host's. A guest whose game does not is dropped ("out of sync"), and
+keeps its recording as `out-of-sync.craftreplay` next to
+`last.craftreplay`: please report such a game with that file and the
+host's `last.craftreplay`.
 
 ### Messages
 

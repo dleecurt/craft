@@ -45,7 +45,9 @@ enum
    msg_bye,       /* either: reason */
    msg_pause,     /* host: on */
    msg_pace,      /* host: pace */
-   msg_lobby      /* host: seat lines, options summary */
+   msg_lobby,     /* host: seat lines, options summary */
+   msg_delay,     /* host: the input delay from now on */
+   msg_note       /* host: a note for the screen ("Waiting for Lee 12s") */
 };
 
 #define ring_size 128 /* steps kept; far more than the delay */
@@ -313,6 +315,16 @@ static bool fill_conn(conn &c)
    }
 }
 
+/* Write and read what we can.  Read even when writing fails: the other
+   side may have said goodbye (and why) before closing. */
+static bool pump(conn &c)
+{
+   bool wrote = flush_conn(c);
+   bool read = c.fd >= 0 && fill_conn(c);
+
+   return wrote && read;
+}
+
 /* The next whole message in c.in, if any: type and fields. */
 static bool next_msg(conn &c, int &type, reader &r, size_t &used)
 {
@@ -405,6 +417,16 @@ static char status_text[256] = "";
 static char message_text[256] = "";
 static bool message_new = false;
 static double waiting_since = 0;
+static int last_sub[max_players]; /* host: last step each seat sent orders for */
+static int first_play_step = 0;
+static int window_steps = 0; /* host: steps run, and how many we waited for a guest */
+static int window_waits = 0;
+static double last_note_sent = 0;
+static char guest_note[256] = ""; /* guest: the host's latest note, and when */
+static double guest_note_at = 0;
+static bool dropped_out_of_sync = false;
+
+#define grace_ms 15000 /* a guest whose orders stop this long is dropped */
 static bool host_paused = false;
 
 static check host_checks[64]; /* host's own hashes, by step / every */
@@ -564,7 +586,7 @@ int net_lobby_poll(int max_guests, char names[][128])
 
       if (c.fd < 0)
          continue;
-      if (!flush_conn(c) || !fill_conn(c))
+      if (!pump(c))
       {
          lobby_remove(i--);
          continue;
@@ -696,6 +718,10 @@ static bool snapshot(buf &out)
 
 static void mark_initial_steps(int first_step)
 {
+   for (int p = 0; p < max_players; p++)
+      last_sub[p] = first_step + net_delay - 1;
+   first_play_step = first_step;
+   window_steps = window_waits = 0;
    for (int s = first_step; s < first_step + net_delay; s++)
    {
       step_slot &sl = slot(s);
@@ -832,6 +858,32 @@ static void host_check(conn &g, int step, uint64_t hash)
       g.pending[g.num_pending++] = { step, hash };
 }
 
+/* A seat's orders for a step.  The delay can grow during the game, so a
+   seat may skip steps: those have no orders from it. */
+static void got_orders(int seat, int step, const net_orders &o)
+{
+   if (step < next_send || step >= next_send + ring_size / 2)
+      return;
+   for (int k = i_max(last_sub[seat] + 1, next_send); k < step; k++)
+   {
+      step_slot &g = slot(k);
+
+      if (!g.have[seat])
+      {
+         g.o[seat].n = 0;
+         g.have[seat] = true;
+      }
+   }
+   {
+      step_slot &t = slot(step);
+
+      t.o[seat] = o;
+      t.have[seat] = true;
+   }
+   if (step > last_sub[seat])
+      last_sub[seat] = step;
+}
+
 /* Send every step whose orders are complete, in order. */
 static void host_send_ready()
 {
@@ -882,13 +934,8 @@ static void host_handle(conn &g)
          int step = r.i32();
          net_orders o;
 
-         if (r.orders(o) && step >= next_send && step < next_send + ring_size / 2)
-         {
-            step_slot &s = slot(step);
-
-            s.o[g.seat] = o;
-            s.have[g.seat] = true;
-         }
+         if (r.orders(o))
+            got_orders(g.seat, step, o);
          break;
       }
       case msg_check:
@@ -1010,8 +1057,11 @@ static bool ssh_to(const char addr[], int port, int &fd)
       dup2(sv[1], 1);
       close(sv[0]);
       close(sv[1]);
-      execlp(ssh, ssh, "-T", "-o", "ExitOnForwardFailure=yes", "-o", "ConnectTimeout=15", "-W",
-             target, addr, (char *)NULL);
+      /* keepalives: if the host's computer vanishes, ssh gives up within
+         about 15 seconds and the game says the host has left */
+      execlp(ssh, ssh, "-T", "-o", "ExitOnForwardFailure=yes", "-o", "ConnectTimeout=15", "-o",
+             "ServerAliveInterval=5", "-o", "ServerAliveCountMax=3", "-W", target, addr,
+             (char *)NULL);
       fprintf(stderr, "craft: cannot run %s: %s\n", ssh, strerror(errno));
       _exit(127);
    }
@@ -1080,7 +1130,7 @@ int net_guest_lobby_poll(int ms, gzFile &state, char lines[][128], int &num_line
       return net_lobby_ended;
    }
    poll(&pf, 1, ms);
-   if (!flush_conn(to_host) || !fill_conn(to_host))
+   if (!pump(to_host))
    {
       /* whatever came before it closed may say why */
       if (next_msg(to_host, type, r, used) && type == msg_bye)
@@ -1263,6 +1313,18 @@ static void guest_handle()
          say(text);
          break;
       }
+      case msg_delay:
+      {
+         int d = (int)r.u32();
+
+         if (r.ok && d >= 1 && d <= 12)
+            net_delay = d;
+         break;
+      }
+      case msg_note:
+         r.str(guest_note, sizeof(guest_note));
+         guest_note_at = now_ms();
+         break;
       case msg_pace:
       {
          char text[64];
@@ -1279,6 +1341,7 @@ static void guest_handle()
          r.str(why, sizeof(why));
          to_host.in.drop(used);
          host_gone = true;
+         dropped_out_of_sync = strncmp(why, "Dropped: out of sync", 20) == 0;
          snprintf(status_text, sizeof(status_text), "%s",
                   why[0] ? why : "The host has left the game");
          printf("craft: %s\n", status_text);
@@ -1321,7 +1384,7 @@ void net_poll(int ms)
       poll(pf, (nfds_t)n, ms);
    if (net_role == net_guest && to_host.fd >= 0)
    {
-      if (!flush_conn(to_host) || !fill_conn(to_host))
+      if (!pump(to_host))
       {
          guest_handle(); /* whatever arrived before it closed */
          if (!host_gone)
@@ -1355,7 +1418,7 @@ void net_poll(int ms)
       for (int p = 0; p < max_players; p++)
          if (guests[p].fd >= 0)
          {
-            if (!flush_conn(guests[p]) || !fill_conn(guests[p]))
+            if (!pump(guests[p]))
             {
                host_handle(guests[p]);
                if (guests[p].fd >= 0)
@@ -1375,10 +1438,7 @@ void net_submit(int step, const net_orders &mine)
 {
    if (net_role == net_host)
    {
-      step_slot &s = slot(step);
-
-      s.o[net_seat] = mine;
-      s.have[net_seat] = true;
+      got_orders(net_seat, step, mine);
       host_send_ready();
    }
    else if (net_role == net_guest)
@@ -1406,16 +1466,20 @@ bool net_take_step(int step, net_orders all[max_players])
       else if (now - waiting_since > 1000)
       {
          char who[200] = "";
+         int left = (int)((grace_ms - (now - waiting_since)) / 1000);
 
-         if (net_role == net_guest && host_paused)
+         if (net_role == net_guest)
          {
-            snprintf(status_text, sizeof(status_text), "Paused by\n%.40s", name[host_seat]);
+            if (host_paused)
+               snprintf(status_text, sizeof(status_text), "Paused by\n%.40s", name[host_seat]);
+            else if (now - guest_note_at < 2500)
+               snprintf(status_text, sizeof(status_text), "%s", guest_note);
+            else
+               snprintf(status_text, sizeof(status_text), "Waiting for\n%.40s %ds", name[host_seat],
+                        (int)((now - waiting_since) / 1000));
             return false;
          }
-         if (net_role == net_guest)
-            snprintf(who, sizeof(who), "%.40s", name[host_seat]);
-         else
-         {
+         { // host: whose orders are missing
             step_slot &w = slot(step);
 
             for (int p = 0; p < max_players; p++)
@@ -1423,10 +1487,60 @@ bool net_take_step(int step, net_orders all[max_players])
                   snprintf(who + strlen(who), sizeof(who) - strlen(who), "%s%.40s",
                            who[0] ? ", " : "", name[p]);
          }
-         snprintf(status_text, sizeof(status_text), "Waiting for\n%.200s %ds", who,
-                  (int)((now - waiting_since) / 1000));
+         snprintf(status_text, sizeof(status_text), "Waiting for\n%.200s %ds", who, i_max(0, left));
+         if (now - last_note_sent > 900)
+         { /* so the guests see who everyone waits for */
+            msg m(msg_note);
+
+            m.str(status_text);
+            broadcast(m);
+            last_note_sent = now;
+         }
+         if (now - waiting_since >= grace_ms)
+         { // drop_whoever_stalls
+            step_slot &w = slot(step);
+
+            for (int p = 0; p < max_players; p++)
+               if (guests[p].fd >= 0 && !w.have[p])
+               {
+                  msg m(msg_bye);
+
+                  m.str("Dropped: no answer for 15 seconds");
+                  send_msg(guests[p], m);
+                  flush_conn(guests[p]);
+                  guest_left(p, "stopped answering");
+               }
+            host_send_ready();
+         }
       }
       return false;
+   }
+   if (net_role == net_host)
+   { // grow_the_delay_if_guests_keep_us_waiting
+      /* Orders run net_delay steps after they are given, so that they
+         reach every computer in time.  If the host often has to wait for
+         a guest's orders, the network is slower than that: give orders
+         one step more (up to 12).  Not in the first few seconds, while
+         the guests are still setting up. */
+      if (step > first_play_step + 200)
+      {
+         window_steps++;
+         window_waits += waiting_since != 0;
+         if (window_steps >= 200)
+         {
+            if (window_waits * 20 > window_steps && net_delay < 12)
+            {
+               msg m(msg_delay);
+
+               net_delay++;
+               m.u32((uint32_t)net_delay);
+               broadcast(m);
+               printf("craft: the network is slow; orders now take %d steps\n", net_delay);
+               fflush(stdout);
+            }
+            window_steps = window_waits = 0;
+         }
+      }
    }
    if (waiting_since != 0 && !host_gone)
    {
@@ -1438,6 +1552,11 @@ bool net_take_step(int step, net_orders all[max_players])
    for (int p = 0; p < max_players; p++)
       all[p] = s.o[p];
    return true;
+}
+
+bool net_dropped_out_of_sync()
+{
+   return dropped_out_of_sync;
 }
 
 void net_after_step(int step)

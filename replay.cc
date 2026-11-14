@@ -177,6 +177,7 @@ static struct
 
 static int mismatches = 0;
 static int crash_step = -1; /* the recording ends where the game crashed */
+static const char *crash_why = "the game crashed or froze here when recorded";
 
 /* CRAFT_REPLAY_DUMP=DIR: write the state breakdown at every hash point,
    as DIR/rec-STEP.txt when recording and DIR/play-STEP.txt when playing
@@ -300,12 +301,12 @@ void replay_take(int step, int player, int &num, int cmd[], int id[], int x[], i
       { /* play on past the crash, to see whether it happens again */
          if (step == crash_step)
          {
-            printf("replay: the game crashed during step %d when recorded\n", step);
+            printf("replay: step %d: %s; playing on\n", step, crash_why);
             fflush(stdout);
          }
          if (step > crash_step + 400)
          {
-            printf("replay: no crash this time\n");
+            printf("replay: 400 more steps went by without trouble\n");
             finish(step, false);
          }
          return;
@@ -314,6 +315,13 @@ void replay_take(int step, int player, int &num, int cmd[], int id[], int x[], i
       {
          crash_step = next.step;
          next.valid = false;
+         continue;
+      }
+      if (next.eof && crash_step < 0)
+      { /* the recording just stops (the game froze or was killed): play
+           on, to see whether it freezes or crashes again */
+         crash_step = step;
+         crash_why = "the recording stops here (the game froze or was killed)";
          continue;
       }
       if (next.eof)

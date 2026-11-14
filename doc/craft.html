@@ -1,6 +1,8 @@
 <!-- Changed from the CRAFT 3.5 Standard Version (craftcc35.tar.Z),
      as clause 3 of its license requires (see LICENSE):
        2026       dleecurt/craft: moved from html/craft.html; removed a third-party image
+       2026       dleecurt/craft: installation section points to GitHub; the old
+                  GMD site no longer exists
      Exact changes: git log --follow -- doc/craft.html -->
 <HTML>
 <HEAD></HEAD>
@@ -1169,47 +1171,34 @@ chan", <B>the king of the kings</B> and one may call you the winner.
 <A NAME = "h supported">
 <H2>Supported</H2>
   <UL>
-  <LI> At moment, there is an executable for SUNOS 4.1.2 under X11R6 
-       (maybe also X11R5, never tried it).
-  <LI> The whole thing was compiled under SUNOS, but to my surprise it also
-       runs under SOLARIS (SunOS 5.4) (at least on our machines), just try it.
-  <LI> There is an executable for LINUX.
-  <LI> The source code is available, so that it should be possible to
-       compile executables for other architectures.
-  <LI> This html-document with all its pictures can be retrieved.
+  <LI> CRAFT runs on Linux and NetBSD under X11, and should build on
+       other Unix systems with an X server.
+  <LI> The source code, with these pages and all their pictures, is at
+       <A HREF="https://github.com/dleecurt/craft">https://github.com/dleecurt/craft</A>.
   </UL>
-  All this stuff can be retrieved from 
-  <A HREF="http://borneo.gmd.de:80/~hua">http://borneo.gmd.de:80/~hua</A>
 
 <A NAME = "h what to do">
 <H2>What to do ?</H2>
 
 <UL>
-  <LI>get the file craft2.tar.z (e.g. via 
-      <A HREF="http://borneo.gmd.de:80/~hua">http://borneo.gmd.de:80/~hua</A>)
-  <LI>create a directory <I>dir</I>  
-  <LI>in <i>dir</i> you do
+  <LI>get the source:
+      <I>git clone https://github.com/dleecurt/craft.git</I>
+  <LI>in the <I>craft</I> directory do
       <UL>
-         <LI>uncompress craft.tar.Z
-         <LI>tar xvf craft.tar
+         <LI>autoreconf -fi
+         <LI>./configure
+         <LI>make
       </UL>
-  <LI>That's it, now you can call "craft" as described above.
-  </UL>
+  <LI>That's it, now you can call "craft" as described above
+      (or install it with <I>make install</I>).
+      See <A HREF="craftcc.html">Source Code of CRAFT</A> for more.
 </UL>
 
 <A NAME = "h system requirements">
 <H2>System Requirements</H2>
 
-There are precompiled versions for LINUX and SUNOS 4.1.3. The SUNOS version also runs under
-SOLARIS normally.
+Any computer of the last twenty years with an X display will do.
 
-<UL>
-  <LI> The SUN should be an IPX or better.
-  <LI> The game is further optimized to be playable on LINUX PC's with 486/100 or better.
-         The main problem is that the game requires a relatively high
-amount of RAM, therefore the PC should have >= 16Mb RAM.
-</UL>
-     
 <HR>
 <A NAME = "option panel">
 <A NAME = "h how to call the game">

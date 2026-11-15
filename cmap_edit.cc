@@ -128,17 +128,17 @@ cmap_edit::cmap_edit(char map_name[])
       }
    }
    { // open_cmd_win
-      cmd_win = new win("cmap_edit", "", by_fix, by_fix, cmd_dx, cmd_dy);
+      cmd_win = new win("cmap_edit", by_fix, by_fix, cmd_dx, cmd_dy);
       frame(cmd_win);
    }
    { // open_map_win
-      map_win = new win("cmap_map", "", by_fix, by_fix, dx * (pixel_dx + 1) + 60,
+      map_win = new win("cmap_map", by_fix, by_fix, dx * (pixel_dx + 1) + 60,
                         dy * (pixel_dy + 1) + 60);
       map_win->clear();
       map_win->tick();
    }
    { // open_picture
-      picture = new win("camp_pic", "", by_fix, by_fix, pic_dx, pic_dy);
+      picture = new win("camp_pic", by_fix, by_fix, pic_dx, pic_dy);
    }
    { // init_omap
       for (int x = 0; x < 5; x++)
@@ -163,7 +163,7 @@ cmap_edit::cmap_edit(char map_name[])
       picture->tick();
    }
    { // show_color_table
-      color_table = new win("cmap_colors", "", by_fix, by_fix, colors_dx, colors_dy);
+      color_table = new win("cmap_colors", by_fix, by_fix, colors_dx, colors_dy);
       for (int i = 0; i < max_color; i++)
       { // show_one_color
          color_table->set_color(i);
@@ -1618,7 +1618,7 @@ void cmap_edit::set_to_ppm(char map_name[], char ppm_name[])
       p = new ppm(ppm_name);
    }
    { // open_map
-      w = new win("lala", "", 10, 10, 10, 10);
+      w = new win("lala", 10, 10, 10, 10);
 
       strcpy(name, map_name);
       dx = p->dx;

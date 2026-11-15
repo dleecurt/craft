@@ -49,7 +49,7 @@ file_selector::file_selector(const char p_name[], int x, int y, char full_file_n
       num_files = 0;
    }
    { // open_w
-      w = new win(name, "", x, y, w_dx, w_dy);
+      w = new win(name, x, y, w_dx, w_dy);
       w->set_color(win_default_c("filesel_background"));
       w->fill(0, 0, w_dx, w_dy);
    }
@@ -83,7 +83,7 @@ file_selector::file_selector(char p_name[], int x, int y, char p_file_name[], ch
       num_files = 0;
    }
    { // open_w
-      w = new win(name, "", x, y, w_dx, w_dy);
+      w = new win(name, x, y, w_dx, w_dy);
       w->set_color(win_default_c("filesel_background"));
       w->fill(0, 0, w_dx, w_dy);
    }

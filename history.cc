@@ -98,7 +98,7 @@ char *history::select(int x, int y, int dx, int dy)
             strcpy(case_string[i], entry[i]);
       }
       snprintf(f_name, sizeof(f_name), "%s.hist", name);
-      w = new win(f_name, "", x, y, dx, dy);
+      w = new win(f_name, x, y, dx, dy);
       sel = new selector(f_name, w, num_entries, case_string, 0, 0, dx - 16, dy);
    }
    { // perform_sel

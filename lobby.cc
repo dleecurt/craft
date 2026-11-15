@@ -36,7 +36,7 @@ const char *kind_name[] = { "host", "Open", "Computer", "Closed" };
    dialogs. */
 win *open_box(const char title[], int dx, int dy)
 {
-   win *w = new win("craft_network", "", 120, 80, dx, dy);
+   win *w = new win("craft_network", 120, 80, dx, dy);
 
    w->set_background(win_default_c("tell_background"));
    w->set_color(win_default_c("tell_background"));

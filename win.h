@@ -287,8 +287,8 @@ class win
 
           win  (char title []);
 
+          /* windows open on the display in $DISPLAY */
           win  (const char title [],
-                const char host  [],
                 int  x,
                 int  y, 
                 int  dx,
@@ -297,7 +297,6 @@ class win
                 bool resize_enable = false);
           win  (win  *parent,
                 const char title [],
-                char host  [],
                 int  x,
                 int  y, 
                 int  dx,

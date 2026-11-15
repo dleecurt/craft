@@ -77,11 +77,6 @@ void frame(win *w, int x1, int y1, int x2, int y2, int color_1, int color_2)
 
 bool yes(const char question[])
 {
-   return yes("", question);
-}
-
-bool yes(const char host[], const char question[])
-{
    win *w;
    button *ok;
    button *no;
@@ -91,7 +86,7 @@ bool yes(const char host[], const char question[])
       int dx;
       int dy;
 
-      w = new win("janus:yes", host, 100, 100, 200, 100);
+      w = new win("janus:yes", 100, 100, 200, 100);
       frame(w);
       ok = new button(w, "/yes", 40, 60);
       no = new button(w, "/no", 200 - 64, 60);
@@ -122,7 +117,7 @@ bool yes(const char host[], const char question[])
    return ok_pressed;
 }
 
-bool yes(win *parent, char host[], const char question[])
+bool yes(win *parent, const char question[])
 {
    win *w;
    button *ok;
@@ -133,7 +128,7 @@ bool yes(win *parent, char host[], const char question[])
       int dx;
       int dy;
 
-      w = new win(parent, "janus:yes", host, 100, 100, 200, 100);
+      w = new win(parent, "janus:yes", 100, 100, 200, 100);
       frame(w);
       ok = new button(w, "/yes", 40, 60);
       no = new button(w, "/no", 200 - 64, 60);
@@ -166,11 +161,6 @@ bool yes(win *parent, char host[], const char question[])
 
 void ack(char message[])
 {
-   ack("", message);
-}
-
-void ack(const char host[], char message[])
-{
    win *w;
    button *ok;
    int dx;
@@ -182,7 +172,7 @@ void ack(const char host[], char message[])
       text_size(message, win_default_font, dx, dy, num_lines);
    }
    { // open_mask
-      w = new win("janus:ack", host, 100, 100, dx + 40, dy + 100);
+      w = new win("janus:ack", 100, 100, dx + 40, dy + 100);
       frame(w);
       ok = new button(w, "/ok", (dx + 40) / 2 - 12, dy + 100 - 40);
       w->set_background(win_default_c("ack_background"));
@@ -244,13 +234,8 @@ void ack(const char host[], char message[])
 
 void tell(win *&w, char message[])
 {
-   tell("", w, message);
-}
-
-void tell(const char host[], win *&w, char message[])
-{
    { // open_mask
-      w = new win("janus:tell", host, 100, 100, 300, 100);
+      w = new win("janus:tell", 100, 100, 300, 100);
       frame(w);
       w->tick();
    }
@@ -266,10 +251,10 @@ void tell(const char host[], win *&w, char message[])
    }
 }
 
-void tell(char host[], win *parent, win *&w, char message[])
+void tell(win *parent, win *&w, char message[])
 {
    { // open_mask
-      w = new win(parent, "janus:tell", host, 100, 100, 300, 100);
+      w = new win(parent, "janus:tell", 100, 100, 300, 100);
       frame(w);
       w->tick();
    }
@@ -294,7 +279,7 @@ bool get_line(char s[], char name[], int dx, bool with_history)
    bool is_cancel;
 
    { // open_win
-      w = new win(name, "", 100, 100, dx + 40, 80);
+      w = new win(name, 100, 100, dx + 40, 80);
       background(w);
       gl = new craft_getline(name, w, s, 20, 20, dx, 20, with_history);
       cancel = new button(w, "cancel", (dx + 40) / 2 - 60, 50);

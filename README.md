@@ -141,6 +141,11 @@ The start menu sets up the world (with or without a king, local sight,
 islands, and a seed to repeat a landscape) and the four players. Each
 player button cycles between **Human**, **Computer** and inactive
 (`- - -`); since version 3.5 more than one computer player can take part.
+Several human players set up here share this computer, each with their
+own game window. To play from separate computers, use network play
+(below). (The original Craft instead opened each player's windows on
+another computer's X display, set in a *Host* field on the player's
+page; that has been replaced by network play and removed.)
 The full rules are in [`doc/craft.html`](doc/craft.html).
 
 ### Saving and restoring
@@ -157,7 +162,9 @@ Saves are kept in `~/.local/share/craft/saves/` (or
 whole game: the landscape, every unit and building, all players and the
 computer players' plans, so a restored game carries on exactly where it
 was saved. Games with several human players can be saved too; restoring
-one reopens the windows on the same X displays. A save only loads in the
+one opens every human player's windows on this computer. A game saved
+during network play is restored the same way, or press **host** before
+**restore** to host it again with the same seats. A save only loads in the
 same version of Craft that wrote it (the game says so if it doesn't).
 
 ### Game pace

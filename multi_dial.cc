@@ -59,7 +59,7 @@ multi_dial::multi_dial(char name[], char buttons[], bool used_history)
       }
    }
    { // open_w
-      w = new win(title, "", by_fix, by_fix, max_b_title_dx + 44, num_buttons * line_dy + 24);
+      w = new win(title, by_fix, by_fix, max_b_title_dx + 44, num_buttons * line_dy + 24);
       background(w);
    }
    { // init_values

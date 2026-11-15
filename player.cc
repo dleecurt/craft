@@ -123,7 +123,7 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
                sun_cnt[x][y] = 0;
       }
       { // open_w_craft
-         w_craft = new win("craft", host, 0, 0, w_craft_dx, w_craft_dy);
+         w_craft = new win("craft", 0, 0, w_craft_dx, w_craft_dy);
          w_craft->set_color(gray80);
          w_craft->fill(0, 0, w_craft_dx, w_craft_dy);
          w_craft->tick();
@@ -132,7 +132,7 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
          char f_name[256];
 
          sprintf(f_name, "craft_land_%s", name);
-         w_land = new win(w_craft, name, host, w_craft_dx - w_land_dx, 0, w_land_dx, w_land_dy);
+         w_land = new win(w_craft, name, w_craft_dx - w_land_dx, 0, w_land_dx, w_land_dy);
          wdx = w_land_dx;
          wdy = w_land_dy;
          x0 = 0;
@@ -142,7 +142,7 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
          char f_name[256];
 
          sprintf(f_name, "craft_status_%s", name);
-         w_status = new win(w_craft, f_name, host, w_craft_dx - w_land_dx - w_status_dx, 0,
+         w_status = new win(w_craft, f_name, w_craft_dx - w_land_dx - w_status_dx, 0,
                             w_status_dx, w_status_dy);
          w_status->set_color(gray80);
          w_status->fill(0, 0, w_status_dx, w_status_dy);
@@ -151,7 +151,7 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
          char f_name[256];
 
          sprintf(f_name, "craft_inform_%s", name);
-         w_inform = new win(w_craft, f_name, host, 0, w_craft_dy - w_inform_dy,
+         w_inform = new win(w_craft, f_name, 0, w_craft_dy - w_inform_dy,
                             w_craft_dx - w_land_dx - w_status_dx, w_inform_dy);
          w_inform->set_color(gray80);
          w_inform->fill(0, 0, w_inform_dx, w_inform_dy);
@@ -171,7 +171,7 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
          char f_name[256];
 
          sprintf(f_name, "craft_overview_%s", name);
-         w_overview = new win(w_craft, f_name, host, 0, 0, landscape_dx * olandscale,
+         w_overview = new win(w_craft, f_name, 0, 0, landscape_dx * olandscale,
                               landscape_dy * olandscale);
          w_overview->set_color(black);
          w_overview->fill(0, 0, landscape_dx * olandscale, landscape_dy * olandscale);
@@ -180,7 +180,7 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
          char f_name[256];
 
          sprintf(f_name, "pause_%s", name);
-         w_pause = new win(w_craft, f_name, host, 0,
+         w_pause = new win(w_craft, f_name, 0,
                            w_craft_dy - w_inform_dy - w_unit_dy - (num_players * 25 + 28), 100,
                            num_players * 25 + 28);
          w_pause->set_color(gray80);
@@ -193,7 +193,7 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
          }
       }
       { // open_w_unit
-         w_unit = new win(w_craft, "craft_units", host,
+         w_unit = new win(w_craft, "craft_units",
                           w_craft_dx - w_land_dx - w_status_dx - w_unit_dx,
                           w_craft_dy - w_inform_dy - w_unit_dy, w_unit_dx, w_unit_dy);
          w_unit->set_color(gray80);
@@ -210,7 +210,7 @@ player::player(int pno, char l_name[], char l_host[], int l_color, double g_spee
          act = 0;
       }
       { // open_w_msg
-         w_msg = new win(w_craft, "msg", host, 0, w_craft_dy - w_msg_dy, w_msg_dx, w_msg_dy);
+         w_msg = new win(w_craft, "msg", 0, w_craft_dy - w_msg_dy, w_msg_dx, w_msg_dy);
          g_msg = new craft_getline("msg", w_msg, message, 1, 1, w_msg_dx - 2, w_msg_dy - 2, false,
                                    false, true);
       }
@@ -2403,8 +2403,8 @@ void player::get_cmds(bool &is_quit, int &num, int cmd[max_orders], int cmd_id[m
          if (b_quit->eval())
          { // handle_quit_pressed
             b_quit->press(true);
-            is_quit = yes(w_craft, host, "realy quit, coward");
-            if (is_quit && yes(w_craft, host, "save the game first?"))
+            is_quit = yes(w_craft, "realy quit, coward");
+            if (is_quit && yes(w_craft, "save the game first?"))
                save_game_dialog();
             b_quit->press(false);
          }

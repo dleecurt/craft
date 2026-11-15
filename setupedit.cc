@@ -14,7 +14,7 @@
 #include "craft_def.h"
 #include "masks.h"
 
-edit_setup::edit_setup(char host[], int initial_money)
+edit_setup::edit_setup(int initial_money)
 {
    { // init_config
       for (int i = 0; i < 5; i++)
@@ -29,7 +29,7 @@ edit_setup::edit_setup(char host[], int initial_money)
       price[4] = price_doktor;
    }
    { // open_w
-      w = new win("setupedit", host, 30, 30, 300, 340);
+      w = new win("setupedit", 30, 30, 300, 340);
       frame(w);
    }
    {       // open_buttons

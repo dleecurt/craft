@@ -14,7 +14,7 @@ class edit_setup
    button *quit;
    button *cancel;
 
-   edit_setup  (char host [], int money);
+   edit_setup  (int money);
    ~edit_setup ();
 
    void eval (bool &quit, int num [5]);

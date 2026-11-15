@@ -59,9 +59,9 @@ morph_edit::morph_edit(char m_name[], char orig_name[], char dest_name[])
       dest = new ppm(dest_name, true);
    }
    { // open_wins
-      w_orig = new win("Morph_orig", "", by_fix, by_fix, i_min(max_win_size, orig->dx),
+      w_orig = new win("Morph_orig", by_fix, by_fix, i_min(max_win_size, orig->dx),
                        i_min(max_win_size, orig->dy));
-      w_dest = new win("Morph_dest", "", by_fix, by_fix, i_min(max_win_size, dest->dx),
+      w_dest = new win("Morph_dest", by_fix, by_fix, i_min(max_win_size, dest->dx),
                        i_min(max_win_size, dest->dy));
    }
    { // create_cursor

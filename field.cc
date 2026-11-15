@@ -425,7 +425,7 @@ void field::dump(int x, int y)
 {
    { // open_w
       if (!w_is_open)
-         w = new win("dd", "", by_fix, by_fix, landscape_dx * 2, landscape_dy * 2);
+         w = new win("dd", by_fix, by_fix, landscape_dx * 2, landscape_dy * 2);
       w_is_open = true;
    }
    {    // perform_dump

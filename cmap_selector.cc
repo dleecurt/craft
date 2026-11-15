@@ -255,7 +255,7 @@ bool cmap_sel(char name[], const char pattern[])
 
       { // open_sel
          quit = false;
-         w = new win("cmap_sel", "", by_fix, by_fix, 400, 700);
+         w = new win("cmap_sel", by_fix, by_fix, 400, 700);
          frame(w);
          cancel = new button(w, "cancel", 180, 640);
          sel = new cmap_selector("cmap_sel", w, num_cases, cases, 10, 10, 340, 600);

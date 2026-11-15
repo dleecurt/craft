@@ -1236,9 +1236,10 @@ setup the general game parameters and the type and number of players and their p
 </UL>
 <P>
 
-Anyway you should make sure that the <I>xhost</I> permissions are properly
-set, since this game is not a client-server game. The calling task always
-wants to open windows on the other players' hosts.
+<I>Note for this version:</I> the original game opened each player's
+windows on that player's own X display, which needed <I>xhost</I>
+permissions. That has been replaced by network play, where every player
+runs Craft on their own computer; see the README.
 <HR>
 <H1>What's new since version 2.x?</H1>
 

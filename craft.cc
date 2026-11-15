@@ -1386,7 +1386,7 @@ int main(int argc, char **argv)
                button *b;
                char text[] = "You are out of the game";
 
-               tell(host[net_seat], w, text);
+               tell(w, text);
                b = new button(w, "OK", 120, 80);
                while (!stop_requested)
                {
@@ -1472,7 +1472,7 @@ int main(int argc, char **argv)
                   win *w;
                   button *b;
 
-                  tell(host[net_seat], players[net_seat]->w_land, w, msg);
+                  tell(players[net_seat]->w_land, w, msg);
                   b = new button(w, "OK", 120, 80);
                   while (!stop_requested)
                   {
@@ -1592,7 +1592,7 @@ int main(int argc, char **argv)
                                     if (active[j] && players[j]->has_view && !replay_playing
                                         && net_role == net_off)
                                     { // tell_to_player
-                                       tell(host[j], players[j]->w_land, w[j], msg);
+                                       tell(players[j]->w_land, w[j], msg);
                                        b[j] = new button(w[j], "OK", 120, 80);
                                        m_active[j] = true;
                                     }
@@ -1638,7 +1638,7 @@ int main(int argc, char **argv)
                                        m_active[j] = false;
                                        if (active[j] && players[j]->has_view && !replay_playing)
                                        { // tell_to_player
-                                          tell(host[j], players[j]->w_land, w[j], msg);
+                                          tell(players[j]->w_land, w[j], msg);
                                           b[j] = new button(w[j], "OK", 120, 80);
                                           m_active[j] = true;
                                        }
@@ -1678,7 +1678,7 @@ int main(int argc, char **argv)
                                        m_active[j] = false;
                                        if (active[j] && players[j]->has_view && !replay_playing)
                                        { // tell_to_player
-                                          tell(host[j], players[j]->w_land, w[j], msg);
+                                          tell(players[j]->w_land, w[j], msg);
                                           b[j] = new button(w[j], "OK", 120, 80);
                                           m_active[j] = true;
                                        }
@@ -1784,7 +1784,7 @@ int main(int argc, char **argv)
                         if (active[j] && players[j]->has_view && !replay_playing
                             && net_role == net_off)
                         { // tell_to_player
-                           tell(host[j], players[j]->w_land, w[j], msg);
+                           tell(players[j]->w_land, w[j], msg);
                            b[j] = new button(w[j], "OK", 120, 80);
                            m_active[j] = true;
                         }
@@ -1830,7 +1830,7 @@ int main(int argc, char **argv)
                            m_active[j] = false;
                            if (active[j] && players[j]->has_view && !replay_playing)
                            { // tell_to_player
-                              tell(host[j], players[j]->w_land, w[j], msg);
+                              tell(players[j]->w_land, w[j], msg);
                               b[j] = new button(w[j], "OK", 120, 80);
                               m_active[j] = true;
                            }
@@ -1870,7 +1870,7 @@ int main(int argc, char **argv)
                            m_active[j] = false;
                            if (active[j] && players[j]->has_view && !replay_playing)
                            { // tell_to_player
-                              tell(host[j], players[j]->w_land, w[j], msg);
+                              tell(players[j]->w_land, w[j], msg);
                               b[j] = new button(w[j], "OK", 120, 80);
                               m_active[j] = true;
                            }

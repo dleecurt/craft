@@ -326,7 +326,6 @@ void main_menu(int /* act_menu */, int &tic)
 
 void player_menu(int act_menu, int &tic)
 {
-   craft_getline *g_host;
    craft_getline *g_name;
 
    {    // init
@@ -343,7 +342,6 @@ void player_menu(int act_menu, int &tic)
          p[m_player]->show(0, 0);
       }
       { // show_buttons
-         g_host = new craft_getline("", w, host[(act_menu - 2)], 60, 160, 180, 20);
          g_name = new craft_getline("", w, name[(act_menu - 2)], 60, 230, 180, 20);
       }
    }
@@ -356,7 +354,6 @@ void player_menu(int act_menu, int &tic)
          w->mark_mouse();
          w->tick();
          { // handle_cmds
-            g_host->get();
             g_name->get();
             speed[(act_menu - 2)] = 1;
          }
@@ -365,7 +362,6 @@ void player_menu(int act_menu, int &tic)
       }
    }
    { // finish
-      delete (g_host);
       delete (g_name);
    }
 }
@@ -648,7 +644,7 @@ void option_menu(double &speed, int &tic)
 
    {    // init
       { // open_w
-         w = new win("craft_options", "", 10, 10, w_dx, w_dy);
+         w = new win("craft_options", 10, 10, w_dx, w_dy);
       }
       { // init_p
          /* pictures belong to a window: none kept from a previous menu */

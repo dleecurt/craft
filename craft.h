@@ -87,6 +87,11 @@ extern player         *players [max_players];
 extern int            num_players;
 extern int            active [max_players];
 
+/* What sits in each seat.  The name is left from the days when each
+   player could play on a different X display; now it holds only:
+   ""  a person playing at this screen,
+   "-" the computer,
+   "@" a person playing on another computer (network play). */
 extern char           host  [max_players][128];
 extern char           name  [max_players][128];
 extern double         speed [max_players];           

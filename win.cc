@@ -640,7 +640,7 @@ void win::rezoom_all(double s)
 /* CLASS win (funktions)                                                */
 /*----------------------------------------------------------------------*/
 
-win::win(const char title[], const char host[], int x, int y, int dx, int dy, bool enable,
+win::win(const char title[], int x, int y, int dx, int dy, bool enable,
          bool resize_enable)
 
 {
@@ -662,7 +662,7 @@ win::win(const char title[], const char host[], int x, int y, int dx, int dy, bo
    if (is_enable)
    { // perform_open
       char full_title[128] = "win:";
-      char full_host[128];
+      char display_name[128];
       int argc = 0;
       char **argv = NULL;
       XSetWindowAttributes new_attr;
@@ -687,15 +687,12 @@ win::win(const char title[], const char host[], int x, int y, int dx, int dy, bo
          with_fix = false;
          strcpy(name, title);
          strcat(full_title, title);
-         { // set_host
-            if (strcmp(host, "") == 0)
-            {
-               const char *env_display = getenv("DISPLAY");
+         { // the_display
+            /* Craft used to open each player's windows on that player's
+               own X display; network play replaced that. */
+            const char *env_display = getenv("DISPLAY");
 
-               snprintf(full_host, sizeof(full_host), "%s", env_display != NULL ? env_display : "");
-            }
-            else
-               sprintf(full_host, "%s:0.0", host);
+            snprintf(display_name, sizeof(display_name), "%s", env_display != NULL ? env_display : "");
          }
          argc = 0;
 
@@ -703,11 +700,11 @@ win::win(const char title[], const char host[], int x, int y, int dx, int dy, bo
                       | KeyReleaseMask | ExposureMask | ButtonMotionMask | EnterWindowMask
                       | LeaveWindowMask;
 
-         mydisplay = XOpenDisplay(full_host);
+         mydisplay = XOpenDisplay(display_name);
          if (mydisplay == NULL)
          {
-            fprintf(stderr, "craft: cannot open X display '%s'%s\n", XDisplayName(full_host),
-                    full_host[0] == 0 ? " (is DISPLAY set?)" : "");
+            fprintf(stderr, "craft: cannot open X display '%s'%s\n", XDisplayName(display_name),
+                    display_name[0] == 0 ? " (is DISPLAY set?)" : "");
             exit(1);
          }
          myscreen = DefaultScreen(mydisplay);
@@ -832,7 +829,7 @@ win::win(const char title[], const char host[], int x, int y, int dx, int dy, bo
    }
 }
 
-win::win(win *parent, const char title[], char host[], int x, int y, int dx, int dy, bool enable,
+win::win(win *parent, const char title[], int x, int y, int dx, int dy, bool enable,
          bool resize_enable)
 
 {
@@ -854,7 +851,7 @@ win::win(win *parent, const char title[], char host[], int x, int y, int dx, int
    if (is_enable)
    { // perform_open
       char full_title[128] = "win:";
-      char full_host[128];
+      char display_name[128];
       int argc = 0;
       char **argv = NULL;
       XSetWindowAttributes new_attr;
@@ -879,15 +876,12 @@ win::win(win *parent, const char title[], char host[], int x, int y, int dx, int
          with_fix = false;
          strcpy(name, title);
          strcat(full_title, title);
-         { // set_host
-            if (strcmp(host, "") == 0)
-            {
-               const char *env_display = getenv("DISPLAY");
+         { // the_display
+            /* Craft used to open each player's windows on that player's
+               own X display; network play replaced that. */
+            const char *env_display = getenv("DISPLAY");
 
-               snprintf(full_host, sizeof(full_host), "%s", env_display != NULL ? env_display : "");
-            }
-            else
-               sprintf(full_host, "%s:0.0", host);
+            snprintf(display_name, sizeof(display_name), "%s", env_display != NULL ? env_display : "");
          }
          argc = 0;
          event_mask = ButtonReleaseMask | PropertyChangeMask | ButtonPressMask | KeyPressMask

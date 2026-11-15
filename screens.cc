@@ -87,7 +87,7 @@ void show_splash()
    cmap *picture = NULL;
    win *w;
 
-   w = new win("CRAFT", "", 100, 100, w_dx, w_dy, true, false);
+   w = new win("CRAFT", 100, 100, w_dx, w_dy, true, false);
    w->set_background(win_default_c("tell_background"));
    w->set_color(win_default_c("tell_background"));
    w->fill(0, 0, w_dx, w_dy);
@@ -153,7 +153,7 @@ void show_credits()
       num_lines++;
    }
    w_dy = num_shown * line_dy + 60;
-   w = new win("CRAFT credits", "", 100, 100, w_dx, w_dy, true, false);
+   w = new win("CRAFT credits", 100, 100, w_dx, w_dy, true, false);
    w->set_background(win_default_c("tell_background"));
    w->set_color(win_default_c("tell_background"));
    w->fill(0, 0, w_dx, w_dy);

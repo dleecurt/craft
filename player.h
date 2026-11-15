@@ -108,7 +108,7 @@ class player
    int    color;
 
    char   name [128];
-   char   host [128];
+   char   host [128];   /* seat marker, as host[] in craft.h */
    int    p_no;
 
    bool   pic_used   [max_pics];

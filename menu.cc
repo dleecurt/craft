@@ -170,7 +170,7 @@ menu::~menu()
 void menu::open()
 {
    { // open_window
-      w = new win(name, "", x, y, dx, dy);
+      w = new win(name, x, y, dx, dy);
       w->set_font(men_font);
    }
    { // write_cmds
